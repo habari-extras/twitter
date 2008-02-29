@@ -25,7 +25,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.5',
+			'version' => '0.6',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -125,7 +125,7 @@ class Twitter extends Plugin
 	 **/
 	public function action_post_update_status( $post, $oldvalue, $newvalue )
 	{
-		if ( $newvalue == Post::status( 'published' ) && $newvalue != $oldvalue ) {
+		if ( $newvalue == Post::status( 'published' ) && $post->content_type == Post::type('entry') && $newvalue != $oldvalue ) {
 			if ( Options::get( 'twitter:post_status' ) == '1' ) {
 				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink );
 			}
