@@ -73,7 +73,7 @@ class Twitter extends Plugin
 					$twitter_password= $ui->add( 'password', 'password', 'Twitter Password:' );
 					$twitter_post= $ui->add( 'select', 'post_status', 'Autopost to Twitter:' );
 					$twitter_post->options= array( '0' => 'Disabled', '1' => 'Enabled' );
-					$twitter_show= $ui->add( 'select', 'show', 'Make Twits available to Habari' );
+					$twitter_show= $ui->add( 'select', 'show', 'Make Tweets available to Habari' );
 					$twitter_show->options= array( '0' => 'No', '1' => 'Yes' );
 					$twitter_cache_time= $ui->add( 'text', 'cache', 'Cache expiry in seconds:' );
 					$ui->on_success( array( $this, 'updated_config' ) );
