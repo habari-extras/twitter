@@ -5,13 +5,9 @@
  * Lets you show your current Twitter status in your theme, as well
  * as an option automatically post your new posts to Twitter.
  *
- * Example usage in a PHP template:
- * <code>
- * <div id="twitterbox">
- * <img src="<?php echo htmlspecialchars( $tweet_image_url ); ?>">
- * <?php echo htmlspecialchars( $tweet_text ) . ' @ ' . htmlspecialchars( $tweet_time ); ?>
- * </div>
- * </code>
+ * Usage: <?php $theme->twitter (); ?> to show your latest tweet in a theme.  
+ * A sample tweets.php template is included with the plugin.  This can be copied to your 
+ * active theme and modified.
  *
  **/
 
@@ -25,7 +21,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.6',
+			'version' => '0.7',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -136,7 +132,7 @@ class Twitter extends Plugin
 	 * Add last Twitter status, time, and image to the available template vars
 	 * @param Theme $theme The theme that will display the template
 	 **/
-	public function action_add_template_vars( $theme )
+	public function theme_twitter( $theme )
 	{
 		if ( Options::get( 'twitter:show' ) && Options::get( 'twitter:username' ) != '' ) {
 			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter:username' ) ) . '.xml?count=1';
@@ -169,6 +165,14 @@ class Twitter extends Plugin
 			$theme->tweet_time= '';
 			$theme->tweet_image_url= '';
 		}
+		return $theme->fetch( 'tweets' );
+	}
+	/**
+	 * On plugin init, add the template included with this plugin to the available templates in the theme
+	 */
+	public function action_init()
+	{
+		$this->add_template('tweets', dirname(__FILE__) . '/tweets.php');
 	}
 }
 
