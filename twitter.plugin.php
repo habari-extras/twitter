@@ -21,7 +21,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.7',
+			'version' => '0.8',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -89,15 +89,42 @@ class Twitter extends Plugin
 	}
 
 	/**
+	 * Add the Twitter options to the list of valid field names.
+	 * This causes adminhandler to recognize the Twitter fields and
+	 * to set the userinfo record appropriately
+	**/
+	public function filter_adminhandler_post_user_fields( $fields )
+	{
+		$fields['twitter_name']= 'twitter_name';
+		$fields['twitter_pass']= 'twitter_pass';
+		return $fields;
+	}
+
+	/**
+	 * Add Twitter options to the user profile page.
+	 * Should only be displayed when a user accesses their own profile.
+	**/
+	public function action_theme_admin_user( $user )
+	{
+		// only allow the user to set this option for themselves
+		if ( User::identify() != $user ) {
+			return;
+		}
+		$twitter_name= (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
+		$twitter_pass= (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
+		_e('Your Twitter user name: ');
+		echo '<input type="text" size="20" value="' . $twitter_name . '"><br>';
+		_e('Your Twitter password: ');
+		echo '<input type="password" size="20" value="' . $twitter_pass . '"><br>';
+	}
+
+	/**
 	 * Post a status to Twitter
 	 * @param string $tweet The new status to post
 	 * @todo Update to use RemoteRequest when RemoteRequest supports logins to avoid curl dependency
 	 **/
-	public function post_status( $tweet )
+	public function post_status( $tweet, $name, $pw )
 	{
-		$username= Options::get( 'twitter:username' );
-		$password= Options::get( 'twitter:password' );
-
 		$update_url= 'http://twitter.com/statuses/update.xml';
 		$ch= curl_init();
 
@@ -106,7 +133,7 @@ class Twitter extends Plugin
 		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
 		curl_setopt( $ch, CURLOPT_POST, 1 );
 		curl_setopt( $ch, CURLOPT_POSTFIELDS, 'source=habari&status=' . urlencode( $tweet ) );
-		curl_setopt( $ch, CURLOPT_USERPWD, "$username:$password" );
+		curl_setopt( $ch, CURLOPT_USERPWD, "$name:$pw" );
 
 		$ch_buffer= curl_exec( $ch );
 
@@ -123,7 +150,15 @@ class Twitter extends Plugin
 	{
 		if ( $newvalue == Post::status( 'published' ) && $post->content_type == Post::type('entry') && $newvalue != $oldvalue ) {
 			if ( Options::get( 'twitter:post_status' ) == '1' ) {
-				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink );
+				$user= User::get_by_id( $post->user_id );
+				if ( ! empty( $user->info->twitter_name ) && ! empty( $user->info->twitter_pass ) ) {
+					$name= $user->info->twitter_name;
+					$pw= $user->info->twitter_pass;
+				} else {
+					$name= Options::get( 'twitter:username' );
+					$pw= Options::get( 'twitter:password' );
+				}
+				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink, $name, $pw );
 			}
 		}
 	}
