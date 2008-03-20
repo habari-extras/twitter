@@ -148,6 +148,7 @@ class Twitter extends Plugin
 	 **/
 	public function action_post_update_status( $post, $oldvalue, $newvalue )
 	{
+		if ( is_null( $oldvalue ) ) return;
 		if ( $newvalue == Post::status( 'published' ) && $post->content_type == Post::type('entry') && $newvalue != $oldvalue ) {
 			if ( Options::get( 'twitter:post_status' ) == '1' ) {
 				$user= User::get_by_id( $post->user_id );
@@ -161,6 +162,11 @@ class Twitter extends Plugin
 				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink, $name, $pw );
 			}
 		}
+	}
+	
+	public function action_post_insert_after( $post )
+	{
+		return $this->action_post_update_status( $post, -1, $post->status );
 	}
 
 	/**
