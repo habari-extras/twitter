@@ -121,23 +121,14 @@ class Twitter extends Plugin
 	/**
 	 * Post a status to Twitter
 	 * @param string $tweet The new status to post
-	 * @todo Update to use RemoteRequest when RemoteRequest supports logins to avoid curl dependency
 	 **/
 	public function post_status( $tweet, $name, $pw )
 	{
-		$update_url= 'http://twitter.com/statuses/update.xml';
-		$ch= curl_init();
-
-		curl_setopt( $ch, CURLOPT_URL, $update_url );
-		curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 2 );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
-		curl_setopt( $ch, CURLOPT_POST, 1 );
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, 'source=habari&status=' . urlencode( $tweet ) );
-		curl_setopt( $ch, CURLOPT_USERPWD, "$name:$pw" );
-
-		$ch_buffer= curl_exec( $ch );
-
-		curl_close( $ch );
+		$request= new RemoteRequest( 'http://twitter.com/statuses/update.xml', 'POST' );
+		$request->add_header( array( 'Authorization' => 'Basic ' . base64_encode( "{$name}:{$pw}" ) ) );
+		$request->set_body( 'source=habari&status=' . urlencode( $tweet ) );
+		$request->execute();
+		
 	}
 
 	/**
@@ -208,6 +199,7 @@ class Twitter extends Plugin
 		}
 		return $theme->fetch( 'tweets' );
 	}
+	
 	/**
 	 * On plugin init, add the template included with this plugin to the available templates in the theme
 	 */
