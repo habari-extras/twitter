@@ -54,6 +54,22 @@ class Twitter extends Plugin
 		return $actions;
 	}
 
+
+	/**
+	 * Sets the new 'hide_replies' option to '0' to mimic current, non-reply-hiding
+	 * functionality.
+	 **/
+
+	public function action_plugin_activation( $file )
+	{
+		if(Plugins::id_from_file($file) == Plugins::id_from_file(__FILE__)) {
+			if ( Options::get( 'twitter:hide_replies' ) == null ) {
+				Options::set( 'twitter:hide_replies', 0 );
+			}
+		}
+	}
+
+
 	/**
 	 * Respond to the user selecting an action on the plugin page
 	 * @param string $plugin_id The string id of the acted-upon plugin
@@ -71,6 +87,8 @@ class Twitter extends Plugin
 					$twitter_post->options= array( '0' => 'Disabled', '1' => 'Enabled' );
 					$twitter_show= $ui->add( 'select', 'show', 'Make Tweets available to Habari' );
 					$twitter_show->options= array( '0' => 'No', '1' => 'Yes' );
+					$twitter_show= $ui->add( 'select', 'hide_replies', 'Hide @replies' );
+					$twitter_show->options= array( '1' => 'Yes' , '0' => 'No' );
 					$twitter_cache_time= $ui->add( 'text', 'cache', 'Cache expiry in seconds:' );
 					$ui->on_success( array( $this, 'updated_config' ) );
 					$ui->out();
@@ -167,30 +185,38 @@ class Twitter extends Plugin
 	public function theme_twitter( $theme )
 	{
 		if ( Options::get( 'twitter:show' ) && Options::get( 'twitter:username' ) != '' ) {
-			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter:username' ) ) . '.xml?count=1';
+			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter:username' ) ) . '.xml';
 
 			if ( Cache::has( 'twitter_tweet_text' ) && Cache::has( 'twitter_tweet_time' ) && Cache::has( 'tweet_image_url' ) ) {
 				$theme->tweet_text= Cache::get( 'twitter_tweet_text' );
 				$theme->tweet_time= Cache::get( 'twitter_tweet_time' );
 				$theme->tweet_image_url= Cache::get( 'tweet_image_url' );
 			}
-			else {
+			else { 
 				try {
 					$response= RemoteRequest::get_contents( $twitter_url );
 					$xml= new SimpleXMLElement( $response );
-					$theme->tweet_text= (string) $xml->status->text;
-					$theme->tweet_time= (string) $xml->status->created_at;
-					$theme->tweet_image_url= (string) $xml->status->user->profile_image_url;
-					Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter:cache' ) );
-					Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter:cache' ) );
-					Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter:cache' ) );
+					foreach ( $xml->status as $status ) {
+						if ( ( Options::get( 'twitter:hide_replies' ) == '0' ) || ( strpos( $status->text,"@" ) === false) ) { 
+							$theme->tweet_text= (string) $status->text;
+							$theme->tweet_time= (string) $status->created_at;
+							$theme->tweet_image_url= (string) $status->user->profile_image_url;
+							Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter:cache' ) );
+							Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter:cache' ) );
+							Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter:cache' ) );
+							break;
+						}
+						else {
+						// it's a @. Keep going.
+						}
+					}					
 				}
 				catch ( Exception $e ) {
 					$theme->tweet_text= 'Unable to contact Twitter.';
 					$theme->tweet_time= '';
 					$theme->tweet_image_url= '';
 				}
-			}
+			} 
 		}
 		else {
 			$theme->tweet_text= 'Please set your username in the Twitter plugin config.';
