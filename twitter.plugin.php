@@ -63,8 +63,8 @@ class Twitter extends Plugin
 	public function action_plugin_activation( $file )
 	{
 		if(Plugins::id_from_file($file) == Plugins::id_from_file(__FILE__)) {
-			if ( Options::get( 'twitter:hide_replies' ) == null ) {
-				Options::set( 'twitter:hide_replies', 0 );
+			if ( Options::get( 'twitter__hide_replies' ) == null ) {
+				Options::set( 'twitter__hide_replies', 0 );
 			}
 		}
 	}
@@ -81,16 +81,17 @@ class Twitter extends Plugin
 			switch ( $action ) {
 				case 'Configure' :
 					$ui= new FormUI( strtolower( get_class( $this ) ) );
-					$twitter_username= $ui->add( 'text', 'username', 'Twitter Username:' );
-					$twitter_password= $ui->add( 'password', 'password', 'Twitter Password:' );
-					$twitter_post= $ui->add( 'select', 'post_status', 'Autopost to Twitter:' );
+					$twitter_username= $ui->append( 'text', 'username', 'twitter__username', 'Twitter Username:' );
+					$twitter_password= $ui->append( 'password', 'password', 'twitter__password', 'Twitter Password:' );
+					$twitter_post= $ui->append( 'select', 'post_status', 'twitter__post_status', 'Autopost to Twitter:' );
 					$twitter_post->options= array( '0' => 'Disabled', '1' => 'Enabled' );
-					$twitter_show= $ui->add( 'select', 'show', 'Make Tweets available to Habari' );
+					$twitter_show= $ui->append( 'select', 'show', 'twitter__show', 'Make Tweets available to Habari' );
 					$twitter_show->options= array( '0' => 'No', '1' => 'Yes' );
-					$twitter_show= $ui->add( 'select', 'hide_replies', 'Hide @replies' );
+					$twitter_show= $ui->append( 'select', 'hide_replies', 'twitter__hide_replies', 'Hide @replies' );
 					$twitter_show->options= array( '1' => 'Yes' , '0' => 'No' );
-					$twitter_cache_time= $ui->add( 'text', 'cache', 'Cache expiry in seconds:' );
-					$ui->on_success( array( $this, 'updated_config' ) );
+					$twitter_cache_time= $ui->append( 'text', 'cache', 'twitter__cache', 'Cache expiry in seconds:' );
+					// $ui->on_success( array( $this, 'updated_config' ) );
+					$ui->append( 'submit', 'save', _t('Save') );
 					$ui->out();
 					break;
 			}
