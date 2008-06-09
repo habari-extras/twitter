@@ -187,6 +187,11 @@ class Twitter extends Plugin
 	{
 		if ( Options::get( 'twitter:show' ) && Options::get( 'twitter:username' ) != '' ) {
 			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter:username' ) ) . '.xml';
+			
+			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
+			if ( Options::get( 'twitter:hide_replies' ) == '0' ) {
+				$twitter_url .= '?count=1';
+			}
 
 			if ( Cache::has( 'twitter_tweet_text' ) && Cache::has( 'twitter_tweet_time' ) && Cache::has( 'tweet_image_url' ) ) {
 				$theme->tweet_text= Cache::get( 'twitter_tweet_text' );
@@ -197,9 +202,10 @@ class Twitter extends Plugin
 				try {
 					$response= RemoteRequest::get_contents( $twitter_url );
 					$xml= new SimpleXMLElement( $response );
+					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {
-							if ( ( Options::get( 'twitter:hide_replies' ) == '0' ) || ( strpos( $status->text,"@" ) === false) ) {
+							if ( ( Options::get( 'twitter:hide_replies' ) == '0' ) || ( strpos( $status->text, '@' ) !== 0) ) {
 								$theme->tweet_text= (string) $status->text;
 								$theme->tweet_time= (string) $status->created_at;
 								$theme->tweet_image_url= (string) $status->user->profile_image_url;
@@ -215,16 +221,19 @@ class Twitter extends Plugin
 							$theme->tweet_image_url= '';
 						}
 					}
+					// You can get error as a root element if Twitter is in maintance mode.
 					else if ( $xml->getName() === 'error' ) {
 						$theme->tweet_text= (string) $xml;
 						$theme->tweet_time= '';
 						$theme->tweet_image_url= '';
 					}
+					// Um, yeah. We shouldn't ever hit this.
 					else {
 						$theme->tweet_text= 'Received unexpected XML from Twitter.';
 						$theme->tweet_time= '';
 						$theme->tweet_image_url= '';
 					}
+					// Cache (even errors) to avoid hitting rate limit.
 					Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter:cache' ) );
 					Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter:cache' ) );
 					Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter:cache' ) );
