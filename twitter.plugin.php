@@ -5,8 +5,8 @@
  * Lets you show your current Twitter status in your theme, as well
  * as an option automatically post your new posts to Twitter.
  *
- * Usage: <?php $theme->twitter (); ?> to show your latest tweet in a theme.  
- * A sample tweets.php template is included with the plugin.  This can be copied to your 
+ * Usage: <?php $theme->twitter (); ?> to show your latest tweet in a theme.
+ * A sample tweets.php template is included with the plugin.  This can be copied to your
  * active theme and modified.
  *
  **/
@@ -147,7 +147,7 @@ class Twitter extends Plugin
 		$request->add_header( array( 'Authorization' => 'Basic ' . base64_encode( "{$name}:{$pw}" ) ) );
 		$request->set_body( 'source=habari&status=' . urlencode( $tweet ) );
 		$request->execute();
-		
+
 	}
 
 	/**
@@ -173,7 +173,7 @@ class Twitter extends Plugin
 			}
 		}
 	}
-	
+
 	public function action_post_insert_after( $post )
 	{
 		return $this->action_post_update_status( $post, -1, $post->status );
@@ -193,31 +193,48 @@ class Twitter extends Plugin
 				$theme->tweet_time= Cache::get( 'twitter_tweet_time' );
 				$theme->tweet_image_url= Cache::get( 'tweet_image_url' );
 			}
-			else { 
+			else {
 				try {
 					$response= RemoteRequest::get_contents( $twitter_url );
 					$xml= new SimpleXMLElement( $response );
-					foreach ( $xml->status as $status ) {
-						if ( ( Options::get( 'twitter:hide_replies' ) == '0' ) || ( strpos( $status->text,"@" ) === false) ) { 
-							$theme->tweet_text= (string) $status->text;
-							$theme->tweet_time= (string) $status->created_at;
-							$theme->tweet_image_url= (string) $status->user->profile_image_url;
-							Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter:cache' ) );
-							Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter:cache' ) );
-							Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter:cache' ) );
-							break;
+					if ( $xml->getName() === 'statuses' ) {
+						foreach ( $xml->status as $status ) {
+							if ( ( Options::get( 'twitter:hide_replies' ) == '0' ) || ( strpos( $status->text,"@" ) === false) ) {
+								$theme->tweet_text= (string) $status->text;
+								$theme->tweet_time= (string) $status->created_at;
+								$theme->tweet_image_url= (string) $status->user->profile_image_url;
+								break;
+							}
+							else {
+							// it's a @. Keep going.
+							}
 						}
-						else {
-						// it's a @. Keep going.
+						if ( !isset( $theme->tweet_text ) ) {							
+							$theme->tweet_text= 'No non-replies replies available from Twitter.';
+							$theme->tweet_time= '';
+							$theme->tweet_image_url= '';
 						}
-					}					
+					}
+					else if ( $xml->getName() === 'error' ) {
+						$theme->tweet_text= (string) $xml;
+						$theme->tweet_time= '';
+						$theme->tweet_image_url= '';
+					}
+					else {
+						$theme->tweet_text= 'Received unexpected XML from Twitter.';
+						$theme->tweet_time= '';
+						$theme->tweet_image_url= '';
+					}
+					Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter:cache' ) );
+					Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter:cache' ) );
+					Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter:cache' ) );
 				}
 				catch ( Exception $e ) {
 					$theme->tweet_text= 'Unable to contact Twitter.';
 					$theme->tweet_time= '';
 					$theme->tweet_image_url= '';
 				}
-			} 
+			}
 		}
 		else {
 			$theme->tweet_text= 'Please set your username in the Twitter plugin config.';
@@ -226,7 +243,7 @@ class Twitter extends Plugin
 		}
 		return $theme->fetch( 'tweets' );
 	}
-	
+
 	/**
 	 * On plugin init, add the template included with this plugin to the available templates in the theme
 	 */
