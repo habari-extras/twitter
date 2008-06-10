@@ -131,10 +131,12 @@ class Twitter extends Plugin
 		}
 		$twitter_name= (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
 		$twitter_pass= (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
-		_e('Your Twitter user name: ');
-		echo '<input type="text" size="20" value="' . $twitter_name . '"><br>';
-		_e('Your Twitter password: ');
-		echo '<input type="password" size="20" value="' . $twitter_pass . '"><br>';
+		echo '<div class="container settings user"><h2>Twitter Account</h2>';
+		echo '<div class="item clear" id="twitter_name"><span class="column span-5"><label for="twittername">' . _t('Twitter user name') . '</label></span>';
+		echo '<span class="column span-14 last"><input name="twittername" type="text" class="border" value="' . $twitter_name . '"></span></div>';
+		echo '<div class="item clear" id="twitter_pass"><span class="column span-5"><label for="twitterpass">' . _t('Twitter password') . '</label></span>';
+		echo '<span class="column span-14 last"><input name="twitterpass" type="text" class="border" value="' . $twitter_pass . '"></span></div>';
+		echo '</div>';
 	}
 
 	/**
