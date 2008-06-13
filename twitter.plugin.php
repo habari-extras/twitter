@@ -162,14 +162,14 @@ class Twitter extends Plugin
 	{
 		if ( is_null( $oldvalue ) ) return;
 		if ( $newvalue == Post::status( 'published' ) && $post->content_type == Post::type('entry') && $newvalue != $oldvalue ) {
-			if ( Options::get( 'twitter:post_status' ) == '1' ) {
+			if ( Options::get( 'twitter__post_status' ) == '1' ) {
 				$user= User::get_by_id( $post->user_id );
 				if ( ! empty( $user->info->twitter_name ) && ! empty( $user->info->twitter_pass ) ) {
 					$name= $user->info->twitter_name;
 					$pw= $user->info->twitter_pass;
 				} else {
-					$name= Options::get( 'twitter:username' );
-					$pw= Options::get( 'twitter:password' );
+					$name= Options::get( 'twitter__username' );
+					$pw= Options::get( 'twitter__password' );
 				}
 				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink, $name, $pw );
 			}
@@ -187,11 +187,11 @@ class Twitter extends Plugin
 	 **/
 	public function theme_twitter( $theme )
 	{
-		if ( Options::get( 'twitter:show' ) && Options::get( 'twitter:username' ) != '' ) {
-			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter:username' ) ) . '.xml';
+		if ( Options::get( 'twitter__show' ) && Options::get( 'twitter__username' ) != '' ) {
+			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter__username' ) ) . '.xml';
 			
 			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
-			if ( Options::get( 'twitter:hide_replies' ) == '0' ) {
+			if ( Options::get( 'twitter__hide_replies' ) == '0' ) {
 				$twitter_url .= '?count=1';
 			}
 
@@ -207,7 +207,7 @@ class Twitter extends Plugin
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {
-							if ( ( Options::get( 'twitter:hide_replies' ) == '0' ) || ( strpos( $status->text, '@' ) !== 0) ) {
+							if ( ( Options::get( 'twitter__hide_replies' ) == '0' ) || ( strpos( $status->text, '@' ) !== 0) ) {
 								$theme->tweet_text= (string) $status->text;
 								$theme->tweet_time= (string) $status->created_at;
 								$theme->tweet_image_url= (string) $status->user->profile_image_url;
@@ -236,9 +236,9 @@ class Twitter extends Plugin
 						$theme->tweet_image_url= '';
 					}
 					// Cache (even errors) to avoid hitting rate limit.
-					Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter:cache' ) );
-					Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter:cache' ) );
-					Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter:cache' ) );
+					Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter__cache' ) );
+					Cache::set( 'twitter_tweet_time', $theme->tweet_time, Options::get( 'twitter__cache' ) );
+					Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter__cache' ) );
 				}
 				catch ( Exception $e ) {
 					$theme->tweet_text= 'Unable to contact Twitter.';
