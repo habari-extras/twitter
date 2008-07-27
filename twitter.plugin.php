@@ -203,7 +203,7 @@ class Twitter extends Plugin
 			else {
 				try {
 					$response= RemoteRequest::get_contents( $twitter_url );
-					$xml= new SimpleXMLElement( $response );
+					$xml= @new SimpleXMLElement( $response );
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {
