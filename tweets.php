@@ -2,6 +2,7 @@
 
 <div id="twitterbox">
  <img src="<?php echo htmlspecialchars( $tweet_image_url ); ?>" alt="<?php echo urlencode( Options::get( 'twitter:username' )); ?>">
- <p><?php echo htmlspecialchars( $tweet_text ) . ' @ ' . htmlspecialchars( $tweet_time ); ?></p>
+ <p><?php /* remove the following htmlspecialchars if you are linkifying links */ echo htmlspecialchars( $tweet_text ) . ' @ ' . htmlspecialchars( $tweet_time ); 
+?></p>
 <p><small>via <a href="http://twitter.com/<?php echo urlencode( Options::get( 'twitter:username' )); ?>">Twitter</a></small></p>
  </div>

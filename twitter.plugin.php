@@ -66,6 +66,9 @@ class Twitter extends Plugin
 			if ( Options::get( 'twitter__hide_replies' ) == null ) {
 				Options::set( 'twitter__hide_replies', 0 );
 			}
+			if ( Options::get( 'twitter__linkify_urls' ) == null ) {
+				Options::set( 'twitter__linkify_urls', 0 );
+			}
 		}
 	}
 
@@ -81,15 +84,24 @@ class Twitter extends Plugin
 			switch ( $action ) {
 				case 'Configure' :
 					$ui= new FormUI( strtolower( get_class( $this ) ) );
-					$twitter_username= $ui->append( 'text', 'username', 'twitter__username', 'Twitter Username:' );
-					$twitter_password= $ui->append( 'password', 'password', 'twitter__password', 'Twitter Password:' );
-					$twitter_post= $ui->append( 'select', 'post_status', 'twitter__post_status', 'Autopost to Twitter:' );
-					$twitter_post->options= array( '0' => 'Disabled', '1' => 'Enabled' );
-					$twitter_show= $ui->append( 'select', 'show', 'twitter__show', 'Make Tweets available to Habari' );
-					$twitter_show->options= array( '0' => 'No', '1' => 'Yes' );
-					$twitter_show= $ui->append( 'select', 'hide_replies', 'twitter__hide_replies', 'Hide @replies' );
-					$twitter_show->options= array( '1' => 'Yes' , '0' => 'No' );
-					$twitter_cache_time= $ui->append( 'text', 'cache', 'twitter__cache', 'Cache expiry in seconds:' );
+					$twitter_username= $ui->append( 'text', 'username', 'twitter__username', 
+						_t('Twitter Username:') );
+					$twitter_password= $ui->append( 'password', 'password', 'twitter__password', 
+						_t('Twitter Password:') );
+					$twitter_post= $ui->append( 'select', 'post_status', 'twitter__post_status', 
+						_t('Autopost to Twitter:') );
+					$twitter_post->options= array( '0' => _t('Disabled'), '1' => _t('Enabled') );
+					$twitter_show= $ui->append( 'select', 'show', 'twitter__show', 
+						_t('Make Tweets available to Habari') );
+					$twitter_show->options= array( '0' => _t('No'), '1' => _t('Yes') );
+					$twitter_show= $ui->append( 'select', 'hide_replies', 
+						'twitter__hide_replies', _t('Hide @replies') );
+					$twitter_show->options= array( '1' => _t('Yes') , '0' => _t('No') );
+					$twitter_show= $ui->append( 'select', 'linkify_urls', 
+						'twitter__linkify_urls', _t('Linkify URLs') );
+					$twitter_show->options= array( '1' => _t('Yes') , '0' => _t('No') );
+					$twitter_cache_time= $ui->append( 'text', 'cache', 'twitter__cache', 
+						_t('Cache expiry in seconds:') );
 					// $ui->on_success( array( $this, 'updated_config' ) );
 					$ui->append( 'submit', 'save', _t('Save') );
 					$ui->out();
@@ -252,6 +264,10 @@ class Twitter extends Plugin
 			$theme->tweet_time= '';
 			$theme->tweet_image_url= '';
 		}
+		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
+			$theme->tweet_text = preg_replace("%https?://(\S*)%i",
+			' <a href="$0">$0</a> ', $theme->tweet_text);
+}
 		return $theme->fetch( 'tweets' );
 	}
 
