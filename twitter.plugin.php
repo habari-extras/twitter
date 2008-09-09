@@ -260,7 +260,9 @@ class Twitter extends Plugin
 			}
 		}
 		else {
-			$theme->tweet_text= 'Please set your username in the Twitter plugin config.';
+			$theme->tweet_text= _t('Please set your username in the <a href="' . URL::get( 
+				'admin', 'page=plugins&configure=' . $this->plugin_id . 
+				'&configaction=Configure'). '#plugin_' . $this->plugin_id . '">Twitter plugin config</a>.');
 			$theme->tweet_time= '';
 			$theme->tweet_image_url= '';
 		}
