@@ -5,7 +5,7 @@
  * Lets you show your current Twitter status in your theme, as well
  * as an option automatically post your new posts to Twitter.
  *
- * Usage: <?php $theme->twitter (); ?> to show your latest tweet in a theme.
+ * Usage: <?php $theme->twitter(); ?> to show your latest tweet in a theme.
  * A sample tweets.php template is included with the plugin.  This can be copied to your
  * active theme and modified.
  *
@@ -21,7 +21,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.9',
+			'version' => '0.5-0.10',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -48,7 +48,7 @@ class Twitter extends Plugin
 	public function filter_plugin_config( $actions, $plugin_id )
 	{
 		if ( $plugin_id == $this->plugin_id() ) {
-			$actions[]= 'Configure';
+			$actions[] = 'Configure';
 		}
 
 		return $actions;
@@ -83,24 +83,25 @@ class Twitter extends Plugin
 		if ( $plugin_id == $this->plugin_id() ) {
 			switch ( $action ) {
 				case 'Configure' :
-					$ui= new FormUI( strtolower( get_class( $this ) ) );
-					$twitter_username= $ui->append( 'text', 'username', 'twitter__username', 
+					$ui = new FormUI( strtolower( get_class( $this ) ) );
+					$twitter_username = $ui->append( 'text', 'username', 'twitter__username', 
 						_t('Twitter Username:') );
-					$twitter_password= $ui->append( 'password', 'password', 'twitter__password', 
+					$twitter_password = $ui->append( 'password', 'password', 'twitter__password', 
 						_t('Twitter Password:') );
-					$twitter_post= $ui->append( 'select', 'post_status', 'twitter__post_status', 
+					$twitter_post = $ui->append( 'select', 'post_status', 'twitter__post_status', 
 						_t('Autopost to Twitter:') );
-					$twitter_post->options= array( '0' => _t('Disabled'), '1' => _t('Enabled') );
-					$twitter_show= $ui->append( 'select', 'show', 'twitter__show', 
+					$twitter_post->options = array( '0' => _t('Disabled'), '1' => _t('Enabled') );
+					$twitter_show = $ui->append( 'select', 'show', 'twitter__show', 
 						_t('Make Tweets available to Habari') );
-					$twitter_show->options= array( '0' => _t('No'), '1' => _t('Yes') );
-					$twitter_show= $ui->append( 'select', 'hide_replies', 
+					$twitter_show->options = array( '0' => _t('No'), '1' => _t('Yes') );
+					$twitter_show = $ui->append( 'select', 'hide_replies', 
 						'twitter__hide_replies', _t('Hide @replies') );
-					$twitter_show->options= array( '1' => _t('Yes') , '0' => _t('No') );
-					$twitter_show= $ui->append( 'select', 'linkify_urls', 
+					$twitter_show->options = array( '1' => _t('Yes') , '0' => _t('No') );
+					$twitter_show = $ui->append( 'select', 'linkify_urls', 
 						'twitter__linkify_urls', _t('Linkify URLs') );
-					$twitter_show->options= array( '1' => _t('Yes') , '0' => _t('No') );
-					$twitter_cache_time= $ui->append( 'text', 'cache', 'twitter__cache', 
+					$twitter_show->options = array( '1' => _t('Yes') , '2' => _t('Yes - and shorten link text to domains only'),
+						 '0' => _t('No') );
+					$twitter_cache_time = $ui->append( 'text', 'cache', 'twitter__cache', 
 						_t('Cache expiry in seconds:') );
 					// $ui->on_success( array( $this, 'updated_config' ) );
 					$ui->append( 'submit', 'save', _t('Save') );
@@ -126,8 +127,8 @@ class Twitter extends Plugin
 	**/
 	public function filter_adminhandler_post_user_fields( $fields )
 	{
-		$fields['twitter_name']= 'twitter_name';
-		$fields['twitter_pass']= 'twitter_pass';
+		$fields['twitter_name'] = 'twitter_name';
+		$fields['twitter_pass'] = 'twitter_pass';
 		return $fields;
 	}
 
@@ -177,11 +178,11 @@ class Twitter extends Plugin
 			if ( Options::get( 'twitter__post_status' ) == '1' ) {
 				$user= User::get_by_id( $post->user_id );
 				if ( ! empty( $user->info->twitter_name ) && ! empty( $user->info->twitter_pass ) ) {
-					$name= $user->info->twitter_name;
-					$pw= $user->info->twitter_pass;
+					$name = $user->info->twitter_name;
+					$pw = $user->info->twitter_pass;
 				} else {
-					$name= Options::get( 'twitter__username' );
-					$pw= Options::get( 'twitter__password' );
+					$name = Options::get( 'twitter__username' );
+					$pw = Options::get( 'twitter__password' );
 				}
 				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink, $name, $pw );
 			}
@@ -200,7 +201,7 @@ class Twitter extends Plugin
 	public function theme_twitter( $theme )
 	{
 		if ( Options::get( 'twitter__show' ) && Options::get( 'twitter__username' ) != '' ) {
-			$twitter_url= 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter__username' ) ) . '.xml';
+			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter__username' ) ) . '.xml';
 			
 			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
 			if ( Options::get( 'twitter__hide_replies' ) == '0' ) {
@@ -208,9 +209,9 @@ class Twitter extends Plugin
 			}
 
 			if ( Cache::has( 'twitter_tweet_text' ) && Cache::has( 'twitter_tweet_time' ) && Cache::has( 'tweet_image_url' ) ) {
-				$theme->tweet_text= Cache::get( 'twitter_tweet_text' );
-				$theme->tweet_time= Cache::get( 'twitter_tweet_time' );
-				$theme->tweet_image_url= Cache::get( 'tweet_image_url' );
+				$theme->tweet_text = Cache::get( 'twitter_tweet_text' );
+				$theme->tweet_time = Cache::get( 'twitter_tweet_time' );
+				$theme->tweet_image_url = Cache::get( 'tweet_image_url' );
 			}
 			else {
 				try {
@@ -220,9 +221,9 @@ class Twitter extends Plugin
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {
 							if ( ( Options::get( 'twitter__hide_replies' ) == '0' ) || ( strpos( $status->text, '@' ) !== 0) ) {
-								$theme->tweet_text= (string) $status->text;
-								$theme->tweet_time= (string) $status->created_at;
-								$theme->tweet_image_url= (string) $status->user->profile_image_url;
+								$theme->tweet_text = (string) $status->text;
+								$theme->tweet_time = (string) $status->created_at;
+								$theme->tweet_image_url = (string) $status->user->profile_image_url;
 								break;
 							}
 							else {
@@ -230,22 +231,22 @@ class Twitter extends Plugin
 							}
 						}
 						if ( !isset( $theme->tweet_text ) ) {							
-							$theme->tweet_text= 'No non-replies replies available from Twitter.';
-							$theme->tweet_time= '';
-							$theme->tweet_image_url= '';
+							$theme->tweet_text = 'No non-replies replies available from Twitter.';
+							$theme->tweet_time = '';
+							$theme->tweet_image_url = '';
 						}
 					}
 					// You can get error as a root element if Twitter is in maintance mode.
 					else if ( $xml->getName() === 'error' ) {
-						$theme->tweet_text= (string) $xml;
-						$theme->tweet_time= '';
-						$theme->tweet_image_url= '';
+						$theme->tweet_text = (string) $xml;
+						$theme->tweet_time = '';
+						$theme->tweet_image_url = '';
 					}
 					// Um, yeah. We shouldn't ever hit this.
 					else {
-						$theme->tweet_text= 'Received unexpected XML from Twitter.';
-						$theme->tweet_time= '';
-						$theme->tweet_image_url= '';
+						$theme->tweet_text = 'Received unexpected XML from Twitter.';
+						$theme->tweet_time = '';
+						$theme->tweet_image_url = '';
 					}
 					// Cache (even errors) to avoid hitting rate limit.
 					Cache::set( 'twitter_tweet_text', $theme->tweet_text, Options::get( 'twitter__cache' ) );
@@ -253,22 +254,26 @@ class Twitter extends Plugin
 					Cache::set( 'tweet_image_url', $theme->tweet_image_url, Options::get( 'twitter__cache' ) );
 				}
 				catch ( Exception $e ) {
-					$theme->tweet_text= 'Unable to contact Twitter.';
-					$theme->tweet_time= '';
-					$theme->tweet_image_url= '';
+					$theme->tweet_text = 'Unable to contact Twitter.';
+					$theme->tweet_time = '';
+					$theme->tweet_image_url = '';
 				}
 			}
 		}
 		else {
-			$theme->tweet_text= _t('Please set your username in the <a href="' . URL::get( 
-				'admin', 'page=plugins&configure=' . $this->plugin_id . 
-				'&configaction=Configure'). '#plugin_' . $this->plugin_id . '">Twitter plugin config</a>.');
-			$theme->tweet_time= '';
-			$theme->tweet_image_url= '';
+			$theme->tweet_text = _t('Please set your username in the <a href="%s">Twitter plugin config</a>', array( URL::get( 'admin' , 
+			'page=plugins&configure=' . $this->plugin_id . '&configaction=Configure' ) . '#plugin_' . 
+			$this->plugin_id ) , 'twitter' );			
+			$theme->tweet_time = '';
+			$theme->tweet_image_url = '';
 		}
 		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
-			$theme->tweet_text = preg_replace("%https?://(\S*)%i",
-			' <a href="$0">$0</a> ', $theme->tweet_text);
+//			$theme->tweet_text = preg_replace("%https?://(\S*)%i",
+//			' <a href="$0">$0</a> ', $theme->tweet_text);
+
+			$theme->tweet_text = preg_replace("/(http\:\/\/)*(www.)*([a-z]+\.[a-z]{2,5})([a-z\/]*)/", "<a href=\"http://$2$3$4\">" . 
+			( Options::get( 'twitter__linkify_urls' ) == 2 ? "$3" : "$2$3$4" ) . "</a>", $theme->tweet_text);
+
 }
 		return $theme->fetch( 'tweets' );
 	}
