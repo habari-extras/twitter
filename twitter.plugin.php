@@ -268,10 +268,8 @@ class Twitter extends Plugin
 			$theme->tweet_image_url = '';
 		}
 		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
-//			$theme->tweet_text = preg_replace("%https?://(\S*)%i",
-//			' <a href="$0">$0</a> ', $theme->tweet_text);
-
-			$theme->tweet_text = preg_replace("/(http\:\/\/)*(www.)*([a-z]+\.[a-z]{2,5})([a-z\/]*)/", "<a href=\"http://$2$3$4\">" . 
+			$theme->tweet_text = 
+preg_replace("/(http\:\/\/)?(www.)?([a-z]+\.[a-z]{2,5})([a-z\/]*)/", "<a href=\"http://$2$3$4\">" . 
 			( Options::get( 'twitter__linkify_urls' ) == 2 ? "$3" : "$2$3$4" ) . "</a>", $theme->tweet_text);
 
 }
