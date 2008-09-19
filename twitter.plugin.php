@@ -142,8 +142,8 @@ class Twitter extends Plugin
 		if ( User::identify() != $user ) {
 			return;
 		}
-		$twitter_name= (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
-		$twitter_pass= (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
+		$twitter_name = (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
+		$twitter_pass = (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
 		echo '<div class="container settings user"><h2>Twitter Account</h2>';
 		echo '<div class="item clear" id="twitter_name"><span class="column span-5"><label for="twittername">' . _t('Twitter user name') . '</label></span>';
 		echo '<span class="column span-14 last"><input name="twittername" type="text" class="border" value="' . $twitter_name . '"></span></div>';
@@ -158,7 +158,7 @@ class Twitter extends Plugin
 	 **/
 	public function post_status( $tweet, $name, $pw )
 	{
-		$request= new RemoteRequest( 'http://twitter.com/statuses/update.xml', 'POST' );
+		$request = new RemoteRequest( 'http://twitter.com/statuses/update.xml', 'POST' );
 		$request->add_header( array( 'Authorization' => 'Basic ' . base64_encode( "{$name}:{$pw}" ) ) );
 		$request->set_body( 'source=habari&status=' . urlencode( $tweet ) );
 		$request->execute();
@@ -176,7 +176,7 @@ class Twitter extends Plugin
 		if ( is_null( $oldvalue ) ) return;
 		if ( $newvalue == Post::status( 'published' ) && $post->content_type == Post::type('entry') && $newvalue != $oldvalue ) {
 			if ( Options::get( 'twitter__post_status' ) == '1' ) {
-				$user= User::get_by_id( $post->user_id );
+				$user = User::get_by_id( $post->user_id );
 				if ( ! empty( $user->info->twitter_name ) && ! empty( $user->info->twitter_pass ) ) {
 					$name = $user->info->twitter_name;
 					$pw = $user->info->twitter_pass;
@@ -215,8 +215,8 @@ class Twitter extends Plugin
 			}
 			else {
 				try {
-					$response= RemoteRequest::get_contents( $twitter_url );
-					$xml= @new SimpleXMLElement( $response );
+					$response = RemoteRequest::get_contents( $twitter_url );
+					$xml = @new SimpleXMLElement( $response );
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {
