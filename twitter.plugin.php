@@ -81,32 +81,33 @@ class Twitter extends Plugin
 	public function action_plugin_ui( $plugin_id, $action )
 	{
 		if ( $plugin_id == $this->plugin_id() ) {
-			switch ( $action ) {
-				case 'Configure' :
-					$ui = new FormUI( strtolower( get_class( $this ) ) );
-					$twitter_username = $ui->append( 'text', 'username', 'twitter__username', 
-						_t('Twitter Username:') );
-					$twitter_password = $ui->append( 'password', 'password', 'twitter__password', 
-						_t('Twitter Password:') );
-					$twitter_post = $ui->append( 'select', 'post_status', 'twitter__post_status', 
-						_t('Autopost to Twitter:') );
-					$twitter_post->options = array( '0' => _t('Disabled'), '1' => _t('Enabled') );
-					$twitter_show = $ui->append( 'select', 'show', 'twitter__show', 
-						_t('Make Tweets available to Habari') );
-					$twitter_show->options = array( '0' => _t('No'), '1' => _t('Yes') );
-					$twitter_show = $ui->append( 'select', 'hide_replies', 
-						'twitter__hide_replies', _t('Hide @replies') );
-					$twitter_show->options = array( '1' => _t('Yes') , '0' => _t('No') );
-					$twitter_show = $ui->append( 'select', 'linkify_urls', 
-						'twitter__linkify_urls', _t('Linkify URLs') );
-					$twitter_show->options = array( '1' => _t('Yes') , '2' => _t('Yes - and shorten link text to domains only'),
-						 '0' => _t('No') );
-					$twitter_cache_time = $ui->append( 'text', 'cache', 'twitter__cache', 
-						_t('Cache expiry in seconds:') );
-					// $ui->on_success( array( $this, 'updated_config' ) );
-					$ui->append( 'submit', 'save', _t('Save') );
-					$ui->out();
-					break;
+			
+			if ( $action == _t( 'Configure' ) ) {
+				
+				$ui = new FormUI( strtolower( get_class( $this ) ) );
+				$twitter_username = $ui->append( 'text', 'username', 'twitter__username', 
+					_t('Twitter Username:') );
+				$twitter_password = $ui->append( 'password', 'password', 'twitter__password', 
+					_t('Twitter Password:') );
+				$twitter_post = $ui->append( 'select', 'post_status', 'twitter__post_status', 
+					_t('Autopost to Twitter:') );
+				$twitter_post->options = array( '0' => _t('Disabled'), '1' => _t('Enabled') );
+				$twitter_show = $ui->append( 'select', 'show', 'twitter__show', 
+					_t('Make Tweets available to Habari') );
+				$twitter_show->options = array( '0' => _t('No'), '1' => _t('Yes') );
+				$twitter_show = $ui->append( 'select', 'hide_replies', 
+					'twitter__hide_replies', _t('Hide @replies') );
+				$twitter_show->options = array( '1' => _t('Yes') , '0' => _t('No') );
+				$twitter_show = $ui->append( 'select', 'linkify_urls', 
+					'twitter__linkify_urls', _t('Linkify URLs') );
+				$twitter_show->options = array( '1' => _t('Yes') , '2' => _t('Yes - and shorten link text to domains only'),
+					 '0' => _t('No') );
+				$twitter_cache_time = $ui->append( 'text', 'cache', 'twitter__cache', 
+					_t('Cache expiry in seconds:') );
+				// $ui->on_success( array( $this, 'updated_config' ) );
+				$ui->append( 'submit', 'save', _t('Save') );
+				$ui->out();
+			
 			}
 		}
 	}
