@@ -92,6 +92,9 @@ class Twitter extends Plugin
 				$twitter_post = $ui->append( 'select', 'post_status', 'twitter__post_status', 
 					_t('Autopost to Twitter:') );
 				$twitter_post->options = array( '0' => _t('Disabled'), '1' => _t('Enabled') );
+				$twitter_post = $ui->append( 'text', 'prepend', 'twitter__prepend',
+				 _t('Prepend to Autopost:'));
+				$twitter_post->value = "New Blog Post:";
 				$twitter_show = $ui->append( 'select', 'show', 'twitter__show', 
 					_t('Make Tweets available to Habari') );
 				$twitter_show->options = array( '0' => _t('No'), '1' => _t('Yes') );
@@ -134,26 +137,6 @@ class Twitter extends Plugin
 	}
 
 	/**
-	 * Add Twitter options to the user profile page.
-	 * Should only be displayed when a user accesses their own profile.
-	**/
-	public function action_theme_admin_user( $user )
-	{
-		// only allow the user to set this option for themselves
-		if ( User::identify() != $user ) {
-			return;
-		}
-		$twitter_name = (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
-		$twitter_pass = (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
-		echo '<div class="container settings user"><h2>Twitter Account</h2>';
-		echo '<div class="item clear" id="twitter_name"><span class="column span-5"><label for="twittername">' . _t('Twitter user name') . '</label></span>';
-		echo '<span class="column span-14 last"><input name="twittername" type="text" class="border" value="' . $twitter_name . '"></span></div>';
-		echo '<div class="item clear" id="twitter_pass"><span class="column span-5"><label for="twitterpass">' . _t('Twitter password') . '</label></span>';
-		echo '<span class="column span-14 last"><input name="twitterpass" type="text" class="border" value="' . $twitter_pass . '"></span></div>';
-		echo '</div>';
-	}
-
-	/**
 	 * Post a status to Twitter
 	 * @param string $tweet The new status to post
 	 **/
@@ -185,7 +168,7 @@ class Twitter extends Plugin
 					$name = Options::get( 'twitter__username' );
 					$pw = Options::get( 'twitter__password' );
 				}
-				$this->post_status( 'New Blog post: ' . $post->title . ' ' . $post->permalink, $name, $pw );
+				$this->post_status( Options::get( 'twitter__prepend' ) . $post->title . ' ' . $post->permalink, $name, $pw );
 			}
 		}
 	}
