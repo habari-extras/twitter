@@ -21,13 +21,13 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.5-0.10',
+			'version' => '0.11.5', // not really, it's just not ready for .12 as-is
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
 			'license' => 'Apache License 2.0',
 			'description' => 'Twitter plugin for Habari',
-			'copyright' => '2008'
+			'copyright' => '2009'
 		);
 	}
 
@@ -37,6 +37,17 @@ class Twitter extends Plugin
 	public function action_update_check()
 	{
 	 	Update::add( 'Twitter', 'DD2774BA-96ED-11DC-ABEF-3BAA56D89593', $this->info->version );
+	}
+
+	/**
+	 * Add help text to plugin configuration page
+	 **/
+	public function help()
+	{
+		$help = _t( "This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving 
+and displaying your recent status update on your blog. Either or both can be enabled.<br>A 'tweets' template file for themes is provided."
+		);
+		return $help;
 	}
 
 	/**
@@ -54,7 +65,6 @@ class Twitter extends Plugin
 		return $actions;
 	}
 
-
 	/**
 	 * Sets the new 'hide_replies' option to '0' to mimic current, non-reply-hiding
 	 * functionality.
@@ -66,12 +76,14 @@ class Twitter extends Plugin
 			if ( Options::get( 'twitter__hide_replies' ) == null ) {
 				Options::set( 'twitter__hide_replies', 0 );
 			}
-			if ( Options::get( 'twitter__linkify_urls' ) == null ) {
+			if (( Options::get( 'twitter__linkify_urls' ) == null ) or ( Options::get( 'twitter__linkify_urls' ) > 1 )) {
 				Options::set( 'twitter__linkify_urls', 0 );
+			}
+			if ( Options::get( 'twitter__hashtags_query' ) == null ) {
+				Options::set( 'twitter__hashtags_query', 'http://hashtags.org/search?query=' );
 			}
 		}
 	}
-
 
 	/**
 	 * Respond to the user selecting an action on the plugin page
@@ -85,29 +97,38 @@ class Twitter extends Plugin
 			if ( $action == _t( 'Configure' ) ) {
 				
 				$ui = new FormUI( strtolower( get_class( $this ) ) );
+
 				$twitter_username = $ui->append( 'text', 'username', 'twitter__username', 
 					_t('Twitter Username:') );
 				$twitter_password = $ui->append( 'password', 'password', 'twitter__password', 
 					_t('Twitter Password:') );
-				$twitter_post = $ui->append( 'select', 'post_status', 'twitter__post_status', 
+
+				$post_fieldset = $ui->append( 'fieldset', 'post_settings', _t( 'Autopost Updates from Habari' ) );
+
+				$twitter_post = $post_fieldset->append( 'checkbox', 'post_status', 'twitter__post_status', 
 					_t('Autopost to Twitter:') );
-				$twitter_post->options = array( '0' => _t('Disabled'), '1' => _t('Enabled') );
-				$twitter_post = $ui->append( 'text', 'prepend', 'twitter__prepend',
-				 _t('Prepend to Autopost:'));
+
+				$twitter_post = $post_fieldset->append( 'text', 'prepend', 'twitter__prepend',
+					 _t('Prepend to Autopost:') );
 				$twitter_post->value = "New Blog Post:";
-				$twitter_show = $ui->append( 'select', 'show', 'twitter__show', 
-					_t('Make Tweets available to Habari') );
-				$twitter_show->options = array( '0' => _t('No'), '1' => _t('Yes') );
-				$twitter_show = $ui->append( 'select', 'hide_replies', 
-					'twitter__hide_replies', _t('Hide @replies') );
-				$twitter_show->options = array( '1' => _t('Yes') , '0' => _t('No') );
-				$twitter_show = $ui->append( 'select', 'linkify_urls', 
-					'twitter__linkify_urls', _t('Linkify URLs') );
-				$twitter_show->options = array( '1' => _t('Yes') , '2' => _t('Yes - and shorten link text to domains only'),
-					 '0' => _t('No') );
+
+
+				$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates' ) );
+
+				$twitter_show = $tweet_fieldset->append( 'checkbox', 'show', 'twitter__show', 
+					_t( 'Display twitter status updates in Habari' ) );
+
+				$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', 'twitter__hide_replies',
+					_t( 'Do not show @replies') );
+
+				$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', 'twitter__linkify_urls', 
+					_t('Linkify URLs') );
+				$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', 'twitter__hashtags_query',
+					 _t('#hashtags query link:') );
+
 				$twitter_cache_time = $ui->append( 'text', 'cache', 'twitter__cache', 
 					_t('Cache expiry in seconds:') );
-				// $ui->on_success( array( $this, 'updated_config' ) );
+				$ui->on_success( array( $this, 'updated_config' ) );
 				$ui->append( 'submit', 'save', _t('Save') );
 				$ui->out();
 			
@@ -116,12 +137,39 @@ class Twitter extends Plugin
 	}
 
 	/**
-	 * Returns true if plugin config form values defined in action_plugin_ui should be stored in options by Habari
-	 * @return bool True if options should be stored
-	 **/
-	public function updated_config( $ui )
+	 * Add Twitter options to the user profile page.
+	 * Should only be displayed when a user accesses their own profile.
+	**/
+/*	public function action_form_user( $form )
 	{
-		return true;
+		$user = $form->edit_user->value;
+		print_r($user);
+		// only allow the user to set this option for themselves
+		if ( User::identify() != $user ) {
+			return;
+		}
+		$twitter_name = (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
+		$twitter_pass = (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
+
+
+		echo '<div class="item clear" id="twitter_name"><span class="column span-5"><label for="twittername">' . _t('Twitter user name') . 
+'</label></span>';
+		echo '<span class="column span-14 last"><input name="twittername" type="text" class="border" value="' . $twitter_name . 
+'"></span></div>';
+		echo '<div class="item clear" id="twitter_pass"><span class="column span-5"><label for="twitterpass">' . _t('Twitter password') . 
+'</label></span>';
+		echo '<span class="column span-14 last"><input name="twitterpass" type="text" class="border" value="' . $twitter_pass . 
+'"></span></div>';
+
+	}
+*/
+	/**
+	 * Give the user a session message to confirm options were saved.
+	 **/
+	public function updated_config( FormUI $ui )
+	{
+		Session::notice( _t( 'Twitter options saved.', 'twitter' ) );
+		$ui->save();
 	}
 
 	/**
@@ -188,7 +236,7 @@ class Twitter extends Plugin
 			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter__username' ) ) . '.xml';
 			
 			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
-			if ( Options::get( 'twitter__hide_replies' ) == '0' ) {
+			if ( Options::get( 'twitter__hide_replies' ) != '1' ) {
 				$twitter_url .= '?count=1';
 			}
 
@@ -204,7 +252,7 @@ class Twitter extends Plugin
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {
-							if ( ( Options::get( 'twitter__hide_replies' ) == '0' ) || ( strpos( $status->text, '@' ) !== 0) ) {
+							if ( ( Options::get( 'twitter__hide_replies' ) != '1' ) || ( strpos( $status->text, '@' ) !== 0) ) {
 								$theme->tweet_text = (string) $status->text;
 								$theme->tweet_time = (string) $status->created_at;
 								$theme->tweet_image_url = (string) $status->user->profile_image_url;
@@ -220,7 +268,7 @@ class Twitter extends Plugin
 							$theme->tweet_image_url = '';
 						}
 					}
-					// You can get error as a root element if Twitter is in maintance mode.
+					// You can get error as a root element if Twitter is in maintenance mode.
 					else if ( $xml->getName() === 'error' ) {
 						$theme->tweet_text = (string) $xml;
 						$theme->tweet_time = '';
@@ -252,11 +300,14 @@ class Twitter extends Plugin
 			$theme->tweet_image_url = '';
 		}
 		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
-			$theme->tweet_text = 
-preg_replace("/(http\:\/\/)?(www.)?([a-z]+\.[a-z]{2,5})([a-z\/]*)/", "<a href=\"http://$2$3$4\">" . 
-			( Options::get( 'twitter__linkify_urls' ) == 2 ? "$3" : "$2$3$4" ) . "</a>", $theme->tweet_text);
-
-}
+			/* link to all http: */
+			$theme->tweet_text = preg_replace( '%https?://\S+?(?=(?:[.:?"!$&\'()*+,=]|)(?:\s|$))%i', "<a href=\"$0\">$0</a>", $theme->tweet_text ); 
+			/* link to usernames */
+			$theme->tweet_text = preg_replace( "/(?<!\w)@([\w-_.]{1,64})/", "@<a href=\"http://twitter.com/$1\">$1</a>", $theme->tweet_text ); 
+			/* link to hashtags */
+			$theme->tweet_text = preg_replace( '/(?<!\w)#((?>\d{1,64}|)[\w-.]{1,64})/', 
+				"<a href=\"" . Options::get('twitter__hashtags_query') ."$1\">#$1</a>", $theme->tweet_text ); 
+		}
 		return $theme->fetch( 'tweets' );
 	}
 
