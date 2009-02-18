@@ -21,7 +21,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.11.5', // not really, it's just not ready for .12 as-is
+			'version' => '0.12',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -44,8 +44,7 @@ class Twitter extends Plugin
 	 **/
 	public function help()
 	{
-		$help = _t( "This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving 
-and displaying your recent status update on your blog. Either or both can be enabled.<br>A 'tweets' template file for themes is provided."
+		$help = _t( "This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving and displaying your recent status update on your blog. Either or both can be enabled.<br>A 'tweets' template file for themes is provided."
 		);
 		return $help;
 	}
@@ -112,7 +111,6 @@ and displaying your recent status update on your blog. Either or both can be ena
 					 _t('Prepend to Autopost:') );
 				$twitter_post->value = "New Blog Post:";
 
-
 				$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates' ) );
 
 				$twitter_show = $tweet_fieldset->append( 'checkbox', 'show', 'twitter__show', 
@@ -140,29 +138,29 @@ and displaying your recent status update on your blog. Either or both can be ena
 	 * Add Twitter options to the user profile page.
 	 * Should only be displayed when a user accesses their own profile.
 	**/
-/*	public function action_form_user( $form )
+	public function action_form_user( $form, $edit_user )
 	{
-		$user = $form->edit_user->value;
-		print_r($user);
-		// only allow the user to set this option for themselves
-		if ( User::identify() != $user ) {
-			return;
-		}
-		$twitter_name = (isset($user->info->twitter_name)) ? $user->info->twitter_name : '';
-		$twitter_pass = (isset($user->info->twitter_pass)) ? $user->info->twitter_pass : '';
+		$twitter_name = ( isset( $edit_user->info->twitter_name ) ) ? $edit_user->info->twitter_name : '';
+		$twitter_pass = ( isset( $edit_user->info->twitter_pass ) ) ? $edit_user->info->twitter_pass : '';
 
+		$twitter = $form->insert('page_controls', 'wrapper', 'twitter', _t( 'Twitter' ) );
+		$twitter->class = 'container settings';
+		$twitter->append( 'static', 'twitter', '<h2>' . htmlentities( _t('Twitter'), ENT_COMPAT, 'UTF-8' ) . '</h2>' );
+		
+		$form->move_after( $twitter, $form->change_password );
+		$twitter_name = $form->twitter->append( 'text','twitter_name', 'null:null', _t( 'Twitter Username'), 'optionscontrol_text' );
+		$twitter_name->class[] = 'item clear';
+		$twitter_name->value = $edit_user->info->twitter_name;
+		$twitter_name->charlimit = 64;
+		$twitter_name->helptext = _t( 'Used for autoposting your published entries to Twitter' );
 
-		echo '<div class="item clear" id="twitter_name"><span class="column span-5"><label for="twittername">' . _t('Twitter user name') . 
-'</label></span>';
-		echo '<span class="column span-14 last"><input name="twittername" type="text" class="border" value="' . $twitter_name . 
-'"></span></div>';
-		echo '<div class="item clear" id="twitter_pass"><span class="column span-5"><label for="twitterpass">' . _t('Twitter password') . 
-'</label></span>';
-		echo '<span class="column span-14 last"><input name="twitterpass" type="text" class="border" value="' . $twitter_pass . 
-'"></span></div>';
-
+		$twitter_pass = $form->twitter->append( 'text','twitter_pass', 'null:null', _t( 'Twitter Password'), 'optionscontrol_text' );
+		$twitter_pass->class[] = 'item clear';
+		$twitter_pass->type = 'password';
+		$twitter_pass->value = $edit_user->info->twitter_pass;
+		$twitter_pass->helptext = '';
 	}
-*/
+
 	/**
 	 * Give the user a session message to confirm options were saved.
 	 **/
