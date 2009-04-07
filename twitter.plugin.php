@@ -245,7 +245,11 @@ class Twitter extends Plugin
 			}
 			else {
 				try {
-					$response = RemoteRequest::get_contents( $twitter_url );
+					$r = new RemoteRequest( $twitter_url );
+					$r->set_timeout( 10 );
+					$r->execute();
+					$response = $r->get_response_body();
+					
 					$xml = @new SimpleXMLElement( $response );
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
