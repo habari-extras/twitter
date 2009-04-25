@@ -21,7 +21,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.13',
+			'version' => '1.0',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -224,6 +224,102 @@ class Twitter extends Plugin
 		return $this->action_post_update_status( $post, -1, $post->status );
 	}
 
+	public function filter_block_list($block_list)
+	{
+		$block_list['twitter'] = _t('Twitter');
+		return $block_list;
+	}
+	
+	public function action_block_content_twitter($block)
+	{
+		if ( Options::get( 'twitter__show' ) && Options::get( 'twitter__username' ) != '' ) {
+			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter__username' ) ) . '.xml';
+			
+			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
+			if ( Options::get( 'twitter__hide_replies' ) != '1' ) {
+				$twitter_url .= '?count=1';
+			}
+
+			if (false &&  Cache::has( 'twitter_tweet_text' ) && Cache::has( 'twitter_tweet_time' ) && Cache::has( 'tweet_image_url' ) ) {
+				$block->tweet_text = Cache::get( 'twitter_tweet_text' );
+				$block->tweet_time = Cache::get( 'twitter_tweet_time' );
+				$block->tweet_image_url = Cache::get( 'tweet_image_url' );
+			}
+			else {
+				try {
+					$r = new RemoteRequest( $twitter_url );
+					$r->set_timeout( 10 );
+					$r->execute();
+					$response = $r->get_response_body();
+
+					$xml = @new SimpleXMLElement( $response );
+					// Check we've got a load of statuses returned
+					if ( $xml->getName() === 'statuses' ) {
+						foreach ( $xml->status as $status ) {
+							if ( ( Options::get( 'twitter__hide_replies' ) != '1' ) || ( strpos( $status->text, '@' ) !== 0) ) {
+								$block->tweet_text = (string) $status->text;
+								$block->tweet_time = (string) $status->created_at;
+								$block->tweet_image_url = (string) $status->user->profile_image_url;
+								break;
+							}
+							else {
+								// it's a @. Keep going.
+							}
+						}
+						if ( !isset( $block->tweet_text ) ) {							
+							$block->tweet_text = 'No non-replies replies available from Twitter.';
+							$block->tweet_time = '';
+							$block->tweet_image_url = '';
+						}
+					}
+					// You can get error as a root element if Twitter is in maintenance mode.
+					else if ( $xml->getName() === 'error' ) {
+						$block->tweet_text = (string) $xml;
+						$block->tweet_time = '';
+						$block->tweet_image_url = '';
+					}
+					// Um, yeah. We shouldn't ever hit this.
+					else {
+						$block->tweet_text = 'Received unexpected XML from Twitter.';
+						$block->tweet_time = '';
+						$block->tweet_image_url = '';
+					}
+					// Cache (even errors) to avoid hitting rate limit.
+					Cache::set( 'twitter_tweet_text', $block->tweet_text, Options::get( 'twitter__cache' ) );
+					Cache::set( 'twitter_tweet_time', $block->tweet_time, Options::get( 'twitter__cache' ) );
+					Cache::set( 'tweet_image_url', $block->tweet_image_url, Options::get( 'twitter__cache' ) );
+				}
+				catch ( Exception $e ) {
+					$block->tweet_text = 'Unable to contact Twitter.';
+					$block->tweet_time = '';
+					$block->tweet_image_url = '';
+				}
+			}
+		}
+		else {
+			$block->tweet_text = _t(
+				'Please set your username in the <a href="%s">Twitter plugin config</a>', 
+				array( 
+					URL::get( 
+						'admin' , 
+						'page=plugins&configure=' . $this->plugin_id . '&configaction=Configure' ) . '#plugin_' . $this->plugin_id 
+					), 
+					'twitter'
+				);
+			$block->tweet_time = '';
+			$block->tweet_image_url = '';
+		}
+		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
+			/* link to all http: */
+			$block->tweet_text = preg_replace( '%https?://\S+?(?=(?:[.:?"!$&\'()*+,=]|)(?:\s|$))%i', "<a href=\"$0\">$0</a>", $block->tweet_text ); 
+			/* link to usernames */
+			$block->tweet_text = preg_replace( "/(?<!\w)@([\w-_.]{1,64})/", "@<a href=\"http://twitter.com/$1\">$1</a>", $block->tweet_text ); 
+			/* link to hashtags */
+			$block->tweet_text = preg_replace( '/(?<!\w)#((?>\d{1,64}|)[\w-.]{1,64})/', 
+				"<a href=\"" . Options::get('twitter__hashtags_query') ."$1\">#$1</a>", $block->tweet_text ); 
+		}
+	}
+	
 	/**
 	 * Add last Twitter status, time, and image to the available template vars
 	 * @param Theme $theme The theme that will display the template
@@ -319,6 +415,7 @@ class Twitter extends Plugin
 	public function action_init()
 	{
 		$this->add_template('tweets', dirname(__FILE__) . '/tweets.php');
+		$this->add_template('block.twitter', dirname(__FILE__) . '/block.twitter.php');
 	}
 }
 
