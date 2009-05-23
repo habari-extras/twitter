@@ -21,7 +21,7 @@ class Twitter extends Plugin
 	{
 		return array(
 			'name' => 'Twitter',
-			'version' => '0.13',
+			'version' => '0.14',
 			'url' => 'http://habariproject.org/',
 			'author' => 'Habari Community',
 			'authorurl' => 'http://habariproject.org/',
@@ -44,7 +44,7 @@ class Twitter extends Plugin
 	 **/
 	public function help()
 	{
-		$help = _t( "<p>This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving and displaying your recent status update(s) on your blog. Either or both can be enabled.</p><p>A 'tweets' template file for themes is provided.</p>"
+		$help = _t( "<p>This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving and displaying your recent status update(s) on your blog. Either or both can be enabled.</p><p>A 'tweets' template file for themes is provided. To display it, use <code><?php $theme->twitter(); ?></code>.</p>"
 		);
 		return $help;
 	}
