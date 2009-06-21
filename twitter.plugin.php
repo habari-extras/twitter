@@ -68,8 +68,8 @@ class Twitter extends Plugin
 			if ( !Options::get( 'twitter__limit' ) ) {
 				Options::set( 'twitter__limit', 1 );
 			}
-			if ( !Options::get( 'twitter__twitter_post' ) ){
-				Options::set( 'twitter__twitter_post', "New Blog Post:" );
+			if ( !Options::get( 'twitter__prepend' ) ){
+				Options::set( 'twitter__prepend', "New Blog Post:" );
 			}
 		}
 	}
