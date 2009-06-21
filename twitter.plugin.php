@@ -42,7 +42,7 @@ class Twitter extends Plugin
 	public function filter_plugin_config( $actions, $plugin_id )
 	{
 		if ( $plugin_id == $this->plugin_id() ) {
-			$actions[] = 'Configure';
+			$actions[] = _t( 'Configure' );
 		}
 
 		return $actions;
@@ -67,6 +67,9 @@ class Twitter extends Plugin
 			}
 			if ( !Options::get( 'twitter__limit' ) ) {
 				Options::set( 'twitter__limit', 1 );
+			}
+			if ( !Options::get( 'twitter__twitter_post' ) ){
+				Options::set( 'twitter__twitter_post', "New Blog Post:" );
 			}
 		}
 	}
@@ -96,7 +99,6 @@ class Twitter extends Plugin
 
 				$twitter_post = $post_fieldset->append( 'text', 'prepend', 'twitter__prepend',
 					 _t( 'Prepend to Autopost:' ) );
-				$twitter_post->value = "New Blog Post:";
 
 				$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates' ) );
 
@@ -106,17 +108,19 @@ class Twitter extends Plugin
 				$twitter_limit = $ui->append( 'select', 'limit', 'twitter__limit', 
 					_t( 'Number of updates to show' ) );
 				$twitter_limit->options = array_combine( range( 1, 20 ), range( 1, 20 ) );
-				
+
 				$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', 'twitter__hide_replies',
 					_t( 'Do not show @replies' ) );
 
 				$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', 'twitter__linkify_urls', 
 					_t( 'Linkify URLs' ) );
+
 				$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', 'twitter__hashtags_query',
 					 _t( '#hashtags query link:' ) );
 
 				$twitter_cache_time = $ui->append( 'text', 'cache', 'twitter__cache', 
 					_t( 'Cache expiry in seconds:' ) );
+
 				$ui->on_success( array( $this, 'updated_config' ) );
 				$ui->append( 'submit', 'save', _t( 'Save' ) );
 				$ui->out();
