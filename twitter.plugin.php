@@ -13,23 +13,7 @@
 
 class Twitter extends Plugin
 {
-	/**
-	 * Required plugin information
-	 * @return array The array of information
-	 **/
-	public function info()
-	{
-		return array(
-			'name' => 'Twitter',
-			'version' => '0.13',
-			'url' => 'http://habariproject.org/',
-			'author' => 'Habari Community',
-			'authorurl' => 'http://habariproject.org/',
-			'license' => 'Apache License 2.0',
-			'description' => 'Twitter plugin for Habari',
-			'copyright' => '2009'
-		);
-	}
+	
 
 	/**
 	 * Add update beacon support
