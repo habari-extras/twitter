@@ -243,12 +243,14 @@ class Twitter extends Plugin
 					$xml = @new SimpleXMLElement( $response );
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
-						foreach ( $xml->status as $status ) {
+						foreach ( $xml->status as $status ) {							
 							if ( ( !Options::get( 'twitter__hide_replies' ) ) || ( strpos( $status->text, '@' ) === false) ) {
 								$notice = (object) array (
 									'text' => (string) $status->text, 
 									'time' => (string) $status->created_at, 
-									'image_url' => (string) $status->user->profile_image_url
+									'image_url' => (string) $status->user->profile_image_url,
+									'id' => (int) $status->id,
+									'permalink' => 'http://twitter.com/' . Options::get( 'twitter__username' ) . '/status/' . (string) $status->id
 								);
 								
 								$notices[] = $notice;
