@@ -297,7 +297,7 @@ class Twitter extends Plugin
 				if (!$notices)
 					$notices[] = $notice;
 				// Cache (even errors) to avoid hitting rate limit.
-				Cache::set( 'twitter_notices', $notices, Options::get( 'twitter__cache' ), true );
+				Cache::set( 'twitter_notices', $notices, (int) Options::get( 'twitter__cache' ), true );
 			}
 		}
 		else {
