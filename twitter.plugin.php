@@ -84,7 +84,7 @@ class Twitter extends Plugin
 
 		$ui->on_success( array( $this, 'updated_config' ) );
 		$ui->append( 'submit', 'save', _t( 'Save', 'twitter' ) );
-		$ui->out();
+		return $ui;
 	}
 
 	/**
