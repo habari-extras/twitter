@@ -180,7 +180,7 @@ class Twitter extends Plugin
 	 **/
 	public function theme_twitter( $theme )
 	{
-		$theme->tweets = $this->tweets( Options::get( 'twitter__username' ), Options::get( 'twitter__hide_replies' ), Options::get( 'twitter__limit' ) );
+		$theme->tweets = $this->tweets( Options::get( 'twitter__username', 'twitter__hide_replies', 'twitter__limit', 'twitter__cache', 'twitter__linkify_urls', 'twitter__hashtags_query' ) );
 		return $theme->fetch( 'tweets' );
 	}
 
@@ -223,14 +223,14 @@ class Twitter extends Plugin
 	 **/
 	public function action_block_content_twitter( $block, $theme )
 	{
-		$block->tweets = $this->tweets( $block->username, $block->hide_replies, $block->limit );
+		$block->tweets = $this->tweets( $block->username, $block->hide_replies, $block->limit, $block->cache, $block->linkify_urls, $block->hashtags_query );
 	}
 
 	/**
 	 * Retrieve tweets
 	 * @return array notices The tweets to display in the theme template or block
 	 */
-	public function tweets( $username, $hide_replies = false, $limit ) {
+	public function tweets( $username, $hide_replies = false, $limit, $cache, $linkify_urls = false, $hashtags_query ) {
 		$notices = array();
 		if ( $username != '' ) {
 			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( $username ) . '.xml';
@@ -309,7 +309,7 @@ class Twitter extends Plugin
 					$notices[] = $notice;
 				}
 				// Cache (even errors) to avoid hitting rate limit.
-				Cache::set( 'twitter_notices', $notices, ( Options::get( 'twitter__cache' ) !== false ? Options::get( 'twitter__cache' ) : Twitter::DEFAULT_CACHE_EXPIRE ) ); // , true );
+				Cache::set( 'twitter_notices', $notices, ( $cache !== false ? $cache : Twitter::DEFAULT_CACHE_EXPIRE ) ); // , true );
 			}
 		}
 		else {
@@ -320,7 +320,7 @@ class Twitter extends Plugin
 			);
 			$notices[] = $notice;
 		}
-		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
+		if ( $linkify_urls != FALSE ) {
 			foreach ( $notices as $notice ) {
 				/* link to all http: */
 				$notice->text = preg_replace( '%https?://\S+?(?=(?:[.:?"!$&\'()*+,=]|)(?:\s|$))%i', "<a href=\"$0\">$0</a>", $notice->text ); 
@@ -328,7 +328,7 @@ class Twitter extends Plugin
 				$notice->text = preg_replace( "/(?<!\w)@([\w-_.]{1,64})/", "@<a href=\"http://twitter.com/$1\">$1</a>", $notice->text ); 
 				/* link to hashtags */
 				$notice->text = preg_replace( '/(?<!\w)#((?>\d{1,64}|)[\w-.]{1,64})/', 
-				"<a href=\"" . Options::get('twitter__hashtags_query') ."$1\">#$1</a>", $notice->text ); 
+				"<a href=\"" . $hashtags_query ."$1\">#$1</a>", $notice->text );
 			}
 		}
 		return $notices;
