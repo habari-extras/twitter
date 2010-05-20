@@ -6,14 +6,14 @@
  * as an option automatically post your new posts to Twitter.
  *
  * Usage: <?php $theme->twitter(); ?> to show your latest tweet in a theme.
- * A sample tweets.php template is included with the plugin.  This can be copied to your
+ * A sample tweets.php template is included with the plugin.This can be copied to your
  * active theme and modified.
  *
  **/
 
 class Twitter extends Plugin
 {
-	
+	const DEFAULT_CACHE_EXPIRE = 60; // seconds
 
 	/**
 	 * Add update beacon support
@@ -68,8 +68,6 @@ class Twitter extends Plugin
 
 		$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates', 'twitter' ) );
 	
-		$twitter_show = $tweet_fieldset->append( 'checkbox', 'show', 'twitter__show', _t( 'Display twitter status updates in Habari', 'twitter' ) );
-
 		$twitter_limit = $tweet_fieldset->append( 'select', 'limit', 'twitter__limit', _t( 'Number of updates to show', 'twitter' ) );
 		$twitter_limit->options = array_combine(range(1, 20), range(1, 20));
 
@@ -182,13 +180,64 @@ class Twitter extends Plugin
 	 **/
 	public function theme_twitter( $theme )
 	{
+		$theme->tweets = $this->tweets( Options::get( 'twitter__username' ), Options::get( 'twitter__hide_replies' ), Options::get( 'twitter__limit' ) );
+		return $theme->fetch( 'tweets' );
+	}
+
+	/**
+	 * Add twitter block to the list of selectable blocks
+	 **/ 
+	public function filter_block_list( $block_list )
+	{
+		$block_list[ 'twitter' ] = _t( 'Twitter', 'twitter' );
+		return $block_list;
+	}
+
+
+	/**
+	 * Configure the block
+	 **/
+	public function action_block_form_twitter( $form, $block )
+	{
+
+		$tweet_fieldset = $form->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates', 'twitter' ) );
+
+		$twitter_username = $tweet_fieldset->append( 'text', 'username', $block, _t( 'Twitter Username:', 'twitter' ) );
+
+		$twitter_limit = $tweet_fieldset->append( 'select', 'limit', $block, _t( 'Number of updates to show', 'twitter' ) );
+		$twitter_limit->options = array_combine(range(1, 20), range(1, 20));
+
+		$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', $block, _t( 'Do not show @replies', 'twitter' ) );
+
+		$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', $block, _t( 'Linkify URLs', 'twitter' ) );
+
+		$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', $block, _t( '#hashtags query link:', 'twitter' ) );
+
+		$twitter_cache_time = $tweet_fieldset->append( 'text', 'cache', $block, _t( 'Cache expiry in seconds:', 'twitter' ) );
+
+		$form->append( 'submit', 'save', _t( 'Save', 'twitter' ) );
+	}
+
+	/**
+	 * Populate the block
+	 **/
+	public function action_block_content_twitter( $block, $theme )
+	{
+		$block->tweets = $this->tweets( $block->username, $block->hide_replies, $block->limit );
+	}
+
+	/**
+	 * Retrieve tweets
+	 * @return array notices The tweets to display in the theme template or block
+	 */
+	public function tweets( $username, $hide_replies = false, $limit ) {
 		$notices = array();
-		if ( Options::get( 'twitter__show' ) && Options::get( 'twitter__username' ) != '' ) {
-			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( Options::get( 'twitter__username' ) ) . '.xml';
+		if ( $username != '' ) {
+			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( $username ) . '.xml';
 			
 			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
-			if ( !Options::get( 'twitter__hide_replies' ) &&  Options::get( 'twitter__limit' ) ) {
-				$twitter_url .= '?count=' . Options::get( 'twitter__limit' );
+			if ( ! $hide_replies && $limit ) {
+				$twitter_url .= '?count=' . $limit;
 			}
 
 			if ( Cache::has( 'twitter_notices' ) ) {
@@ -205,17 +254,17 @@ class Twitter extends Plugin
 					// Check we've got a load of statuses returned
 					if ( $xml->getName() === 'statuses' ) {
 						foreach ( $xml->status as $status ) {							
-							if ( ( !Options::get( 'twitter__hide_replies' ) ) || ( strpos( $status->text, '@' ) === FALSE ) ) {
+							if ( ( ! $hide_replies ) || ( strpos( $status->text, '@' ) === FALSE ) ) {
 								$notice = (object) array (
 									'text' => (string) $status->text, 
 									'time' => (string) $status->created_at, 
 									'image_url' => (string) $status->user->profile_image_url,
 									'id' => (int) $status->id,
-									'permalink' => 'http://twitter.com/' . Options::get( 'twitter__username' ) . '/status/' . (string) $status->id
+									'permalink' => 'http://twitter.com/' . $username . '/status/' . (string) $status->id
 								);
 								
 								$notices[] = $notice;
-								if ( Options::get( 'twitter__hide_replies' ) && count($notices) >= Options::get( 'twitter__limit' ) ) {
+								if ( $hide_replies && count( $notices ) >= $limit ) {
 									break;
 								}
 							}
@@ -223,7 +272,7 @@ class Twitter extends Plugin
 							// it's a @. Keep going.
 							}
 						}
-						if ( !$notices ) {		
+						if ( ! $notices ) {
 							$notice = (object) array (
 								'text' => _t( 'No non-replies replies available from Twitter.', 'twitter' ), 
 								'time' => '', 
@@ -249,28 +298,30 @@ class Twitter extends Plugin
 					}
 				}
 				catch ( Exception $e ) {
+					EventLog::log( _t( 'Twitter error: %1$s', array( $e->getMessage() ), 'twitter' ), 'err', 'plugin', 'twitter' );
 					$notice = (object) array (
 						'text' => 'Unable to contact Twitter.', 
 						'time' => '', 
 						'image_url' => ''
 					);
 				}
-				if (!$notices)
+				if ( ! $notices ) {
 					$notices[] = $notice;
+				}
 				// Cache (even errors) to avoid hitting rate limit.
-				Cache::set( 'twitter_notices', $notices, (int) Options::get( 'twitter__cache' ), true );
+				Cache::set( 'twitter_notices', $notices, ( Options::get( 'twitter__cache' ) !== false ? Options::get( 'twitter__cache' ) : Twitter::DEFAULT_CACHE_EXPIRE ) ); // , true );
 			}
 		}
 		else {
 			$notice = (object) array (
-				'text' => _t('Please set your username in the <a href="%s">Twitter plugin config</a>', array( URL::get( 'admin' , 'page=plugins&configure=' . $this->plugin_id . '&configaction=Configure' ) . '#plugin_' . $this->plugin_id ) , 'twitter' ), 
+				'text' => _t( 'Please set your username in the <a href="%s">Twitter plugin config</a>', array( URL::get( 'admin' , 'page=plugins&configure=' . $this->plugin_id . '&configaction=Configure' ) . '#plugin_' . $this->plugin_id ) , 'twitter'  ),
 				'time' => '', 
 				'image_url' => ''
 			);
 			$notices[] = $notice;
 		}
 		if ( Options::get( 'twitter__linkify_urls' ) != FALSE ) {
-			foreach ($notices as $notice) {
+			foreach ( $notices as $notice ) {
 				/* link to all http: */
 				$notice->text = preg_replace( '%https?://\S+?(?=(?:[.:?"!$&\'()*+,=]|)(?:\s|$))%i', "<a href=\"$0\">$0</a>", $notice->text ); 
 				/* link to usernames */
@@ -280,8 +331,7 @@ class Twitter extends Plugin
 				"<a href=\"" . Options::get('twitter__hashtags_query') ."$1\">#$1</a>", $notice->text ); 
 			}
 		}
-		$theme->tweets = $notices;
-		return $theme->fetch( 'tweets' );
+		return $notices;
 	}
 
 	/**
@@ -289,7 +339,8 @@ class Twitter extends Plugin
 	 */
 	public function action_init()
 	{
-		$this->add_template('tweets', dirname(__FILE__) . '/tweets.php');
+		$this->add_template( 'tweets', dirname(__FILE__) . '/tweets.php' );
+		$this->add_template( 'block.twitter', dirname(__FILE__) . '/block.twitter.php' );
 	}
 }
 
