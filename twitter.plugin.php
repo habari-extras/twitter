@@ -180,7 +180,8 @@ class Twitter extends Plugin
 	 **/
 	public function theme_twitter( $theme )
 	{
-		$theme->tweets = $this->tweets( Options::get( 'twitter__username', 'twitter__hide_replies', 'twitter__limit', 'twitter__cache', 'twitter__linkify_urls', 'twitter__hashtags_query' ) );
+		$twitter = Options::get_group( 'twitter');
+		$theme->tweets = $this->tweets( $twitter['username'], $twitter['hide_replies'], $twitter['limit'], $twitter['cache'], $twitter['linkify_urls'], $twitter['hashtags_query'] );
 		return $theme->fetch( 'tweets' );
 	}
 
@@ -230,7 +231,7 @@ class Twitter extends Plugin
 	 * Retrieve tweets
 	 * @return array notices The tweets to display in the theme template or block
 	 */
-	public function tweets( $username, $hide_replies = false, $limit, $cache, $linkify_urls = false, $hashtags_query ) {
+	public function tweets( $username, $hide_replies = false, $limit = 5, $cache = 60, $linkify_urls = false, $hashtags_query = 'http://hashtags.org/search?query=' ) {
 		$notices = array();
 		if ( $username != '' ) {
 			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode( $username ) . '.xml';
