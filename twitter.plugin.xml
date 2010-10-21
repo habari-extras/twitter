@@ -3,7 +3,7 @@
 	<name>Twitter</name>
 	<license url="http://www.apache.org/licenses/LICENSE-2.0.html">Apache Software License 2.0</license>
 	<author url="http://habariproject.org/">The Habari Community</author>
-	<version>0.14</version>
+	<version>0.15</version>
 	<url>http://habariproject.org/</url>
 	<description><![CDATA[Twitter plugin for Habari.]]></description>
 	<copyright>2010</copyright>

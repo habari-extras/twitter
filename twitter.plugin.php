@@ -14,6 +14,8 @@
 class Twitter extends Plugin
 {
 	const DEFAULT_CACHE_EXPIRE = 60; // seconds
+	const CONSUMER_KEY = 'vk8lo1Zqut4g0q1VA1r0BQ';
+	const CONSUMER_SECRET = 'kI6xMYFvV2OUIBqA8F7m1OIhzOfZkPZLjkCmBJy5IE';
 
 	/**
 	 * Add update beacon support
@@ -47,69 +49,126 @@ class Twitter extends Plugin
 	}
 
 	/**
-	 * Simple plugin configuration
-	 * @return FormUI The configuration form
-	 **/
-	public function configure()
-	{
-		$ui = new FormUI( 'twitter' );
-
-		$twitter_username = $ui->append( 'text', 'username', 'twitter__username', 
-			_t( 'Twitter Username:', 'twitter' ) );
-		$twitter_password = $ui->append( 'password', 'password', 'twitter__password', 
-			_t( 'Twitter Password:', 'twitter' ) );
-
-		$post_fieldset = $ui->append( 'fieldset', 'post_settings', _t( 'Autopost Updates from Habari', 'twitter' ) );
-
-		$twitter_post = $post_fieldset->append( 'checkbox', 'post_status', 'twitter__post_status', _t( 'Autopost to Twitter:', 'twitter' ) );
-
-		$twitter_post = $post_fieldset->append( 'text', 'prepend', 'twitter__prepend', _t( 'Prepend to Autopost:', 'twitter' ) );
-		$twitter_post->value = "New Blog Post:";
-
-		$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates', 'twitter' ) );
-	
-		$twitter_limit = $tweet_fieldset->append( 'select', 'limit', 'twitter__limit', _t( 'Number of updates to show', 'twitter' ) );
-		$twitter_limit->options = array_combine(range(1, 20), range(1, 20));
-
-		$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', 'twitter__hide_replies', _t( 'Do not show @replies', 'twitter' ) );
-
-		$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', 'twitter__linkify_urls', 
-			_t('Linkify URLs') );
-
-		$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', 'twitter__hashtags_query', _t( '#hashtags query link:', 'twitter' ) );
-
-		$twitter_cache_time = $tweet_fieldset->append( 'text', 'cache', 'twitter__cache', _t( 'Cache expiry in seconds:', 'twitter' ) );
-
-		$ui->on_success( array( $this, 'updated_config' ) );
-		$ui->append( 'submit', 'save', _t( 'Save', 'twitter' ) );
-		return $ui;
-	}
-
+     * Add the Configure, Authorize and De-Authorize options for the plugin
+     *
+     * @access public
+     * @param array $actions
+     * @param string $plugin_id
+     * @return array
+     */
+    public function filter_plugin_config( $actions, $plugin_id )
+    {
+		if ( $plugin_id == $this->plugin_id() ) {
+			if ( User::identify()->info->twitter__access_token  ) {
+				$actions[] = _t( 'Configure' );
+				$actions[] = _t( 'De-Authorize' );
+			}
+			else {
+				$actions[] = _t( 'Authorize' );
+			}
+		}
+		return $actions;
+    }
 	/**
-	 * Add Twitter options to the user profile page.
-	 * Should only be displayed when a user accesses their own profile.
-	**/
-	public function action_form_user( $form, $edit_user )
-	{
-		$twitter_name = ( isset( $edit_user->info->twitter_name ) ) ? $edit_user->info->twitter_name : '';
-		$twitter_pass = ( isset( $edit_user->info->twitter_pass ) ) ? $edit_user->info->twitter_pass : '';
+     * Plugin UI - Displays the various config options depending on the "option"
+     * chosen.
+     *
+     * @access public
+     * @param string $plugin_id
+     * @param string $action
+     * @return void
+     */
+    public function action_plugin_ui( $plugin_id, $action )
+    {
+		if ( $plugin_id == $this->plugin_id() ) {
+			$ui = new FormUI( strtolower( __CLASS__ ) );
+			$user = User::identify();
+			require_once dirname( __FILE__ ) . '/lib/twitteroauth/twitteroauth.php';
 
-		$twitter = $form->insert( 'page_controls', 'wrapper', 'twitter', _t( 'Twitter', 'twitter' ) );
-		$twitter->class = 'container settings';
-		$twitter->append( 'static', 'twitter', '<h2>' . htmlentities( _t( 'Twitter', 'twitter' ), ENT_COMPAT, 'UTF-8' ) . '</h2>' );
-		
-		$form->move_after( $twitter, $form->change_password );
-		$twitter_name = $form->twitter->append( 'text', 'twitter_name', 'null:null', _t( 'Twitter Username', 'twitter' ), 'optionscontrol_text' );
-		$twitter_name->class[] = 'item clear';
-		$twitter_name->value = $edit_user->info->twitter_name;
-		$twitter_name->charlimit = 64;
-		$twitter_name->helptext = _t( 'Used for autoposting your published entries to Twitter' );
+			switch ( $action ){
+				case _t( 'Authorize' ):
+					unset( $_SESSION['TwitterReqToken'] ); // Just being safe.
+					$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET );
+					$oauth_token = $oauth->getRequestToken( URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'confirm' ) ) );
+					$request_link = $oauth->getAuthorizeURL( $oauth_token );
+					$reqToken = array( "request_link" => $request_link, "request_token" => $oauth_token['oauth_token'], "request_token_secret" => $oauth_token['oauth_token_secret'] );
+					$_SESSION['TwitterReqToken'] = serialize( $reqToken );
+					$ui->append( 'static', 'nocontent', '<h3>Authorize the Habari Twitter Plugin</h3>
+														 <p>Authorize your blog to have access to your Twitter account.</p>
+														 <p>Click the button below, and you will be taken to Twitter.com. If you\'re already logged in, you will be presented with the option to authorize your blog. Press the "Allow" button to do so, and you will come right back here.</p>
+														 <br><p style="text-align:center"><a href="'.$reqToken['request_link'].'"><img src="'. URL::get_from_filesystem( __FILE__ ) .'/lib/twitter_connect.png" alt="Sign in with Twitter" /></a></p>
+								');
+					$ui->out();
+					break;
 
-		$twitter_pass = $form->twitter->append( 'text', 'twitter_pass', 'null:null', _t( 'Twitter Password', 'twitter' ), 'optionscontrol_text' );
-		$twitter_pass->class[] = 'item clear';
-		$twitter_pass->type = 'password';
-		$twitter_pass->value = $edit_user->info->twitter_pass;
-		$twitter_pass->helptext = '';
+				case 'confirm':
+					if( !isset( $_SESSION['TwitterReqToken'] ) ){
+						$auth_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Authorize' ) );
+						$ui->append( 'static', 'nocontent', '<p>'._t( 'Either you have already authorized Habari to access your Twitter account, or you have not yet done so.  Please ' ).'<strong><a href="' . $auth_url . '">'._t( 'try again' ).'</a></strong>.</p>');
+						$ui->out();
+					}
+					else {
+						$reqToken = unserialize( $_SESSION['TwitterReqToken'] );
+						$oauth = new TwitterOAuth( Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $reqToken['request_token'], $reqToken['request_token_secret'] );
+				        $token = $oauth->getAccessToken($_GET['oauth_verifier']);
+						$config_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Configure' ) );
+
+						if( ! empty( $token ) && isset( $token['oauth_token'] ) ){
+							$user->info->twitter__access_token = $token['oauth_token'];
+							$user->info->twitter__access_token_secret = $token['oauth_token_secret'];
+							$user->info->twitter__user_id = $token['user_id'];
+							$user->info->commit();
+							Session::notice( _t( 'Habari Twitter plugin successfully authorized.', 'twitter' ) );
+							Utils::redirect( $config_url );
+						}
+						else{
+							// TODO: We need to fudge something to report the error in the event something fails.  Sadly, the Twitter OAuth class we use doesn't seem to cater for errors very well and returns the Twitter XML response as an array key.
+							// TODO: Also need to gracefully cater for when users click "Deny"
+							echo '<form><p>'._t( 'There was a problem with your authorization.' ).'</p></form>';
+						}
+						unset( $_SESSION['TwitterReqToken'] );
+					}
+					break;
+				case _t( 'De-Authorize' ):
+					$user->info->twitter__user_id = '';
+					$user->info->twitter__access_token = '';
+					$user->info->twitter__access_token_secret = '';
+					$user->info->commit();
+					$reauth_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Authorize' ) ) . '#plugin_options';
+					//$ui->append( 'static', 'nocontent', '<p>'._t( 'The Twitter Plugin authorization has been deleted. Please ensure you ' ) . '<a href="http://twitter.com/settings/connections" target="_blank">' . _t( 'revoke access ' ).'</a>'._t( 'from your Twitter account too.' ).'<p><p>'._t( 'Do you want to ' ).'<b><a href="'.$reauth_url.'">'._t( 're-authorize this plugin' ).'</a></b>?<p>' );
+					Session::notice( _t( 'Habari Twitter plugin authorization revoked. <br>Don\'t forget to revoke access on Twitter itself.', 'twitter' ) );
+					Utils::redirect( $reauth_url );
+					break;
+				case _t( 'Configure' ) :
+					$ui = new FormUI( strtolower( __CLASS__ ) );
+
+					$post_fieldset = $ui->append( 'fieldset', 'post_settings', _t( 'Autopost Updates from Habari', 'twitter' ) );
+
+					$twitter_post = $post_fieldset->append( 'checkbox', 'post_status', 'twitter__post_status', _t( 'Autopost to Twitter:', 'twitter' ) );
+
+					$twitter_post = $post_fieldset->append( 'text', 'prepend', 'twitter__prepend', _t( 'Prepend to Autopost:', 'twitter' ) );
+					$twitter_post->value = "New Blog Post:";
+
+					$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates', 'twitter' ) );
+
+					$twitter_limit = $tweet_fieldset->append( 'select', 'limit', 'twitter__limit', _t( 'Number of updates to show', 'twitter' ) );
+					$twitter_limit->options = array_combine(range(1, 20), range(1, 20));
+
+					$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', 'twitter__hide_replies', _t( 'Do not show @replies', 'twitter' ) );
+
+					$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', 'twitter__linkify_urls', _t('Linkify URLs') );
+
+					$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', 'twitter__hashtags_query', _t( '#hashtags query link:', 'twitter' ) );
+
+					$twitter_cache_time = $tweet_fieldset->append( 'text', 'cache', 'twitter__cache', _t( 'Cache expiry in seconds:', 'twitter' ) );
+
+					$ui->on_success( array( $this, 'updated_config' ) );
+					$ui->append( 'submit', 'save', _t( 'Save', 'twitter' ) );
+					$ui->out();
+					break;
+			}
+			
+		}
 	}
 
 	/**
@@ -119,30 +178,6 @@ class Twitter extends Plugin
 	{
 		Session::notice( _t( 'Twitter options saved.', 'twitter' ) );
 		$ui->save();
-	}
-
-	/**
-	 * Add the Twitter options to the list of valid field names.
-	 * This causes adminhandler to recognize the Twitter fields and
-	 * to set the userinfo record appropriately
-	**/
-	public function filter_adminhandler_post_user_fields( $fields )
-	{
-		$fields['twitter_name'] = 'twitter_name';
-		$fields['twitter_pass'] = 'twitter_pass';
-		return $fields;
-	}
-
-	/**
-	 * Post a status to Twitter
-	 * @param string $tweet The new status to post
-	 **/
-	public function post_status( $tweet, $name, $pw )
-	{
-		$request = new RemoteRequest( 'http://twitter.com/statuses/update.xml', 'POST' );
-		$request->add_header( array( 'Authorization' => 'Basic ' . base64_encode( "{$name}:{$pw}" ) ) );
-		$request->set_body( 'source=habari&status=' . urlencode( $tweet ) );
-		$request->execute();
 	}
 
 	/**
@@ -156,15 +191,11 @@ class Twitter extends Plugin
 		if ( is_null( $oldvalue ) ) return;
 		if ( $newvalue == Post::status( 'published' ) && $post->content_type == Post::type('entry') && $newvalue != $oldvalue ) {
 			if ( Options::get( 'twitter__post_status' ) == '1' ) {
+				require_once dirname( __FILE__ ) . '/lib/twitteroauth/twitteroauth.php';
 				$user = User::get_by_id( $post->user_id );
-				if ( ! empty( $user->info->twitter_name ) && ! empty( $user->info->twitter_pass ) ) {
-					$name = $user->info->twitter_name;
-					$pw = $user->info->twitter_pass;
-				} else {
-					$name = Options::get( 'twitter__username' );
-					$pw = Options::get( 'twitter__password' );
-				}
-				$this->post_status( Options::get( 'twitter__prepend' ) . $post->title . ' ' . $post->permalink, $name, $pw );
+				$oauth = new TwitterOAuth( Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $user->info->twitter__access_token, $user->info->twitter__access_token_secret );
+				$oauth->post('statuses/update', array('status' => Options::get( 'twitter__prepend' ) . $post->title . ' ' . $post->permalink ) );
+				Session::notice( 'Post Tweeted' );
 			}
 		}
 	}
@@ -173,6 +204,7 @@ class Twitter extends Plugin
 	{
 		return $this->action_post_update_status( $post, -1, $post->status );
 	}
+
 
 	/**
 	 * Add last Twitter status, time, and image to the available template vars
@@ -344,5 +376,7 @@ class Twitter extends Plugin
 		$this->add_template( 'block.twitter', dirname(__FILE__) . '/block.twitter.php' );
 	}
 }
+
+
 
 ?>
