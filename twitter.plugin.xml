@@ -3,10 +3,11 @@
 	<name>Twitter</name>
 	<license url="http://www.apache.org/licenses/LICENSE-2.0.html">Apache Software License 2.0</license>
 	<author url="http://habariproject.org/">The Habari Community</author>
-	<version>0.15</version>
+	<version>0.16</version>
 	<url>http://habariproject.org/</url>
 	<description><![CDATA[Twitter plugin for Habari.]]></description>
 	<copyright>2010</copyright>
+	<guid>DD2774BA-96ED-11DC-ABEF-3BAA56D89593</guid>
 	<help>
 		<value><![CDATA[
 			<p>This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving and displaying your recent status update(s) on your blog. Either or both can be enabled.</p><p>A 'tweets' template file for themes is provided.</p>

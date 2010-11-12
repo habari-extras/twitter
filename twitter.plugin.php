@@ -18,25 +18,17 @@ class Twitter extends Plugin
 	const CONSUMER_SECRET = 'kI6xMYFvV2OUIBqA8F7m1OIhzOfZkPZLjkCmBJy5IE';
 
 	/**
-	 * Add update beacon support
-	 **/
-	public function action_update_check()
-	{
-	 	Update::add( 'Twitter', 'DD2774BA-96ED-11DC-ABEF-3BAA56D89593', $this->info->version );
-	}
-
-	/**
 	 * Sets the new 'hide_replies' option to '0' to mimic current, non-reply-hiding
 	 * functionality, and 'twitter__limit' to '1', again to match earlier results.
 	 **/
 
 	public function action_plugin_activation( $file )
 	{
-		if(Plugins::id_from_file($file) == Plugins::id_from_file(__FILE__)) {
+		if( Plugins::id_from_file($file) == Plugins::id_from_file(__FILE__) ) {
 			if ( Options::get( 'twitter__hide_replies' ) == null ) {
 				Options::set( 'twitter__hide_replies', 0 );
 			}
-			if (( Options::get( 'twitter__linkify_urls' ) == null ) or ( Options::get( 'twitter__linkify_urls' ) > 1 )) {
+			if ( ( Options::get( 'twitter__linkify_urls' ) == null ) or ( Options::get( 'twitter__linkify_urls' ) > 1 ) ) {
 				Options::set( 'twitter__linkify_urls', 0 );
 			}
 			if ( Options::get( 'twitter__hashtags_query' ) == null ) {
@@ -58,117 +50,135 @@ class Twitter extends Plugin
      */
     public function filter_plugin_config( $actions, $plugin_id )
     {
-		if ( $plugin_id == $this->plugin_id() ) {
-			if ( User::identify()->info->twitter__access_token  ) {
-				$actions[] = _t( 'Configure' );
-				$actions[] = _t( 'De-Authorize' );
-			}
-			else {
-				$actions[] = _t( 'Authorize' );
-			}
+		if ( User::identify()->info->twitter__access_token  ) {
+			$actions['configure'] = _t( 'Configure' );
+			$actions['deauthorize'] = _t( 'De-Authorize' );
+		}
+		else {
+			$actions['authorize'] = _t( 'Authorize' );
 		}
 		return $actions;
     }
+	
 	/**
-     * Plugin UI - Displays the various config options depending on the "option"
-     * chosen.
+     * Plugin UI - Displays the 'authorize' config option
      *
      * @access public
-     * @param string $plugin_id
-     * @param string $action
      * @return void
      */
-    public function action_plugin_ui( $plugin_id, $action )
-    {
-		if ( $plugin_id == $this->plugin_id() ) {
-			$ui = new FormUI( strtolower( __CLASS__ ) );
-			$user = User::identify();
-			require_once dirname( __FILE__ ) . '/lib/twitteroauth/twitteroauth.php';
-
-			switch ( $action ){
-				case _t( 'Authorize' ):
-					unset( $_SESSION['TwitterReqToken'] ); // Just being safe.
-					$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET );
-					$oauth_token = $oauth->getRequestToken( URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'confirm' ) ) );
-					$request_link = $oauth->getAuthorizeURL( $oauth_token );
-					$reqToken = array( "request_link" => $request_link, "request_token" => $oauth_token['oauth_token'], "request_token_secret" => $oauth_token['oauth_token_secret'] );
-					$_SESSION['TwitterReqToken'] = serialize( $reqToken );
-					$ui->append( 'static', 'nocontent', '<h3>Authorize the Habari Twitter Plugin</h3>
-														 <p>Authorize your blog to have access to your Twitter account.</p>
-														 <p>Click the button below, and you will be taken to Twitter.com. If you\'re already logged in, you will be presented with the option to authorize your blog. Press the "Allow" button to do so, and you will come right back here.</p>
-														 <br><p style="text-align:center"><a href="'.$reqToken['request_link'].'"><img src="'. URL::get_from_filesystem( __FILE__ ) .'/lib/twitter_connect.png" alt="Sign in with Twitter" /></a></p>
-								');
-					$ui->out();
-					break;
-
-				case 'confirm':
-					if( !isset( $_SESSION['TwitterReqToken'] ) ){
-						$auth_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Authorize' ) );
-						$ui->append( 'static', 'nocontent', '<p>'._t( 'Either you have already authorized Habari to access your Twitter account, or you have not yet done so.  Please ' ).'<strong><a href="' . $auth_url . '">'._t( 'try again' ).'</a></strong>.</p>');
-						$ui->out();
-					}
-					else {
-						$reqToken = unserialize( $_SESSION['TwitterReqToken'] );
-						$oauth = new TwitterOAuth( Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $reqToken['request_token'], $reqToken['request_token_secret'] );
-				        $token = $oauth->getAccessToken($_GET['oauth_verifier']);
-						$config_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Configure' ) );
-
-						if( ! empty( $token ) && isset( $token['oauth_token'] ) ){
-							$user->info->twitter__access_token = $token['oauth_token'];
-							$user->info->twitter__access_token_secret = $token['oauth_token_secret'];
-							$user->info->twitter__user_id = $token['user_id'];
-							$user->info->commit();
-							Session::notice( _t( 'Habari Twitter plugin successfully authorized.', 'twitter' ) );
-							Utils::redirect( $config_url );
-						}
-						else{
-							// TODO: We need to fudge something to report the error in the event something fails.  Sadly, the Twitter OAuth class we use doesn't seem to cater for errors very well and returns the Twitter XML response as an array key.
-							// TODO: Also need to gracefully cater for when users click "Deny"
-							echo '<form><p>'._t( 'There was a problem with your authorization.' ).'</p></form>';
-						}
-						unset( $_SESSION['TwitterReqToken'] );
-					}
-					break;
-				case _t( 'De-Authorize' ):
-					$user->info->twitter__user_id = '';
-					$user->info->twitter__access_token = '';
-					$user->info->twitter__access_token_secret = '';
-					$user->info->commit();
-					$reauth_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Authorize' ) ) . '#plugin_options';
-					//$ui->append( 'static', 'nocontent', '<p>'._t( 'The Twitter Plugin authorization has been deleted. Please ensure you ' ) . '<a href="http://twitter.com/settings/connections" target="_blank">' . _t( 'revoke access ' ).'</a>'._t( 'from your Twitter account too.' ).'<p><p>'._t( 'Do you want to ' ).'<b><a href="'.$reauth_url.'">'._t( 're-authorize this plugin' ).'</a></b>?<p>' );
-					Session::notice( _t( 'Habari Twitter plugin authorization revoked. <br>Don\'t forget to revoke access on Twitter itself.', 'twitter' ) );
-					Utils::redirect( $reauth_url );
-					break;
-				case _t( 'Configure' ) :
-					$ui = new FormUI( strtolower( __CLASS__ ) );
-
-					$post_fieldset = $ui->append( 'fieldset', 'post_settings', _t( 'Autopost Updates from Habari', 'twitter' ) );
-
-					$twitter_post = $post_fieldset->append( 'checkbox', 'post_status', 'twitter__post_status', _t( 'Autopost to Twitter:', 'twitter' ) );
-
-					$twitter_post = $post_fieldset->append( 'text', 'prepend', 'twitter__prepend', _t( 'Prepend to Autopost:', 'twitter' ) );
-					$twitter_post->value = "New Blog Post:";
-
-					$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates', 'twitter' ) );
-
-					$twitter_limit = $tweet_fieldset->append( 'select', 'limit', 'twitter__limit', _t( 'Number of updates to show', 'twitter' ) );
-					$twitter_limit->options = array_combine(range(1, 20), range(1, 20));
-
-					$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', 'twitter__hide_replies', _t( 'Do not show @replies', 'twitter' ) );
-
-					$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', 'twitter__linkify_urls', _t('Linkify URLs') );
-
-					$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', 'twitter__hashtags_query', _t( '#hashtags query link:', 'twitter' ) );
-
-					$twitter_cache_time = $tweet_fieldset->append( 'text', 'cache', 'twitter__cache', _t( 'Cache expiry in seconds:', 'twitter' ) );
-
-					$ui->on_success( array( $this, 'updated_config' ) );
-					$ui->append( 'submit', 'save', _t( 'Save', 'twitter' ) );
-					$ui->out();
-					break;
-			}
+    public function action_plugin_ui_authorize()
+    {	
+		require_once dirname( __FILE__ ) . '/lib/twitteroauth/twitteroauth.php';
+		unset( $_SESSION['TwitterReqToken'] ); // Just being safe.
+		
+		$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET );
+		$oauth_token = $oauth->getRequestToken( URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'confirm' ) ) );
+		$request_link = $oauth->getAuthorizeURL( $oauth_token );
+		$reqToken = array( "request_link" => $request_link, "request_token" => $oauth_token['oauth_token'], "request_token_secret" => $oauth_token['oauth_token_secret'] );
+		$_SESSION['TwitterReqToken'] = serialize( $reqToken );
+		
+		$ui = new FormUI( strtolower( __CLASS__ ) );
+		$ui->append( 'static', 'nocontent', '<h3>Authorize the Habari Twitter Plugin</h3>
+											 <p>Authorize your blog to have access to your Twitter account.</p>
+											 <p>Click the button below, and you will be taken to Twitter.com. If you\'re already logged in, you will be presented with the option to authorize your blog. Press the "Allow" button to do so, and you will come right back here.</p>
+											 <br><p style="text-align:center"><a href="'.$reqToken['request_link'].'"><img src="'. URL::get_from_filesystem( __FILE__ ) .'/lib/twitter_connect.png" alt="Sign in with Twitter" /></a></p>
+					');
+		$ui->out();
+	}
 			
+	/**
+     * Plugin UI - Displays the 'confirm' config option.
+     *
+     * @access public
+     * @return void
+     */
+    public function action_plugin_ui_confirm()
+	{
+		require_once dirname( __FILE__ ) . '/lib/twitteroauth/twitteroauth.php';
+		$user = User::identify();
+		$ui = new FormUI( strtolower( __CLASS__ ) );
+		if( !isset( $_SESSION['TwitterReqToken'] ) ){
+			$auth_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Authorize' ) );
+			$ui->append( 'static', 'nocontent', '<p>'._t( 'Either you have already authorized Habari to access your Twitter account, or you have not yet done so.  Please ' ).'<strong><a href="' . $auth_url . '">'._t( 'try again' ).'</a></strong>.</p>');
+			$ui->out();
 		}
+		else {
+			$reqToken = unserialize( $_SESSION['TwitterReqToken'] );
+			$oauth = new TwitterOAuth( Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $reqToken['request_token'], $reqToken['request_token_secret'] );
+			$token = $oauth->getAccessToken($_GET['oauth_verifier']);
+			$config_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Configure' ) );
+
+			if( ! empty( $token ) && isset( $token['oauth_token'] ) ){
+				$user->info->twitter__access_token = $token['oauth_token'];
+				$user->info->twitter__access_token_secret = $token['oauth_token_secret'];
+				$user->info->twitter__user_id = $token['user_id'];
+				$user->info->commit();
+				Session::notice( _t( 'Habari Twitter plugin successfully authorized.', 'twitter' ) );
+				Utils::redirect( $config_url );
+			}
+			else{
+				// TODO: We need to fudge something to report the error in the event something fails.  Sadly, the Twitter OAuth class we use doesn't seem to cater for errors very well and returns the Twitter XML response as an array key.
+				// TODO: Also need to gracefully cater for when users click "Deny"
+				echo '<form><p>'._t( 'There was a problem with your authorization.' ).'</p></form>';
+			}
+			unset( $_SESSION['TwitterReqToken'] );
+		}
+	}
+				
+				
+	/**
+     * Plugin UI - Displays the 'deauthorize' config option.
+     *
+     * @access public
+     * @return void
+     */
+    public function action_plugin_ui_deauthorize()
+	{
+		$user = User::identify();
+		$user->info->twitter__user_id = '';
+		$user->info->twitter__access_token = '';
+		$user->info->twitter__access_token_secret = '';
+		$user->info->commit();
+		$reauth_url = URL::get( 'admin', array( 'page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Authorize' ) ) . '#plugin_options';
+		//$ui->append( 'static', 'nocontent', '<p>'._t( 'The Twitter Plugin authorization has been deleted. Please ensure you ' ) . '<a href="http://twitter.com/settings/connections" target="_blank">' . _t( 'revoke access ' ).'</a>'._t( 'from your Twitter account too.' ).'<p><p>'._t( 'Do you want to ' ).'<b><a href="'.$reauth_url.'">'._t( 're-authorize this plugin' ).'</a></b>?<p>' );
+		Session::notice( _t( 'Habari Twitter plugin authorization revoked. <br>Don\'t forget to revoke access on Twitter itself.', 'twitter' ) );
+		Utils::redirect( $reauth_url );
+	}
+
+	
+	/**
+     * Plugin UI - Displays the 'configure' config option.
+     *
+     * @access public
+     * @return void
+     */
+    public function action_plugin_ui_configure()
+	{
+		$ui = new FormUI( strtolower( __CLASS__ ) );
+
+		$post_fieldset = $ui->append( 'fieldset', 'post_settings', _t( 'Autopost Updates from Habari', 'twitter' ) );
+
+		$twitter_post = $post_fieldset->append( 'checkbox', 'post_status', 'twitter__post_status', _t( 'Autopost to Twitter:', 'twitter' ) );
+
+		$twitter_post = $post_fieldset->append( 'text', 'prepend', 'twitter__prepend', _t( 'Prepend to Autopost:', 'twitter' ) );
+		$twitter_post->value = "New Blog Post:";
+
+		$tweet_fieldset = $ui->append( 'fieldset', 'tweet_settings', _t( 'Displaying Status Updates', 'twitter' ) );
+
+		$twitter_limit = $tweet_fieldset->append( 'select', 'limit', 'twitter__limit', _t( 'Number of updates to show', 'twitter' ) );
+		$twitter_limit->options = array_combine(range(1, 20), range(1, 20));
+
+		$twitter_show = $tweet_fieldset->append( 'checkbox', 'hide_replies', 'twitter__hide_replies', _t( 'Do not show @replies', 'twitter' ) );
+
+		$twitter_show = $tweet_fieldset->append( 'checkbox', 'linkify_urls', 'twitter__linkify_urls', _t('Linkify URLs') );
+
+		$twitter_hashtags = $tweet_fieldset->append( 'text', 'hashtags_query', 'twitter__hashtags_query', _t( '#hashtags query link:', 'twitter' ) );
+
+		$twitter_cache_time = $tweet_fieldset->append( 'text', 'cache', 'twitter__cache', _t( 'Cache expiry in seconds:', 'twitter' ) );
+
+		$ui->on_success( array( $this, 'updated_config' ) );
+		$ui->append( 'submit', 'save', _t( 'Save', 'twitter' ) );
+		$ui->out();
 	}
 
 	/**
