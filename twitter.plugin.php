@@ -50,15 +50,44 @@ class Twitter extends Plugin
      */
     public function filter_plugin_config( $actions, $plugin_id )
     {
-		if ( User::identify()->info->twitter__access_token  ) {
-			$actions['configure'] = _t( 'Configure' );
-			$actions['deauthorize'] = _t( 'De-Authorize' );
-		}
-		else {
-			$actions['authorize'] = _t( 'Authorize' );
+    	
+		if ( $plugin_id == $this->plugin_id() ) {
+		
+			if ( User::identify()->info->twitter__access_token  ) {
+				$actions['configure'] = _t( 'Configure' );
+				$actions['deauthorize'] = _t( 'De-Authorize' );
+			}
+			else {
+				$actions['authorize'] = _t( 'Authorize' );
+			}
+			
 		}
 		return $actions;
     }
+	
+	public function action_plugin_ui ( $plugin_id, $action ) {
+		
+		if ( $plugin_id == $this->plugin_id() ) {
+			
+			switch ( $action ) {
+				
+				case _t('Configure'):
+					$this->action_plugin_ui_configure();
+					break;
+					
+				case _t('De-Authorize'):
+					$this->action_plugin_ui_deauthorize();
+					break;
+					
+				case _t('Authorize'):
+					$this->action_plugin_ui_authorize();
+					break;
+				
+			}
+			
+		}
+		
+	}
 	
 	/**
      * Plugin UI - Displays the 'authorize' config option
