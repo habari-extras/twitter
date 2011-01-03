@@ -82,6 +82,11 @@ class Twitter extends Plugin
 				case _t('Authorize'):
 					$this->action_plugin_ui_authorize();
 					break;
+					
+				// confirm is called by the return request from twitter, it's not ordinarily user-accessible
+				case _t('Confirm'):
+					$this->action_plugin_ui_confirm();
+					break;
 				
 			}
 			
