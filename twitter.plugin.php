@@ -65,36 +65,6 @@ class Twitter extends Plugin
 		return $actions;
 	}
 
-	public function action_plugin_ui($plugin_id, $action)
-	{
-
-		if ($plugin_id == $this->plugin_id()) {
-
-			switch ($action) {
-
-				case _t('Configure'):
-					$this->action_plugin_ui_configure();
-					break;
-
-				case _t('De-Authorize'):
-					$this->action_plugin_ui_deauthorize();
-					break;
-
-				case _t('Authorize'):
-					$this->action_plugin_ui_authorize();
-					break;
-
-				// confirm is called by the return request from twitter, it's not ordinarily user-accessible
-				case _t('Confirm'):
-					$this->action_plugin_ui_confirm();
-					break;
-
-			}
-
-		}
-
-	}
-
 	/**
 	 * Plugin UI - Displays the 'authorize' config option
 	 *
@@ -214,6 +184,7 @@ class Twitter extends Plugin
 
 		$tweet_logins = $ui->append('fieldset', 'tweet_logins', _t('Logging In Using Twitter', 'twitter'));
 		$twitterlogin = $tweet_logins->append('checkbox', 'twitterlogin', 'twitter__login', _t('Show button to log in with Twitter', 'twitter'));
+		$twitterlogin = $tweet_logins->append('checkbox', 'twitterlogincreate', 'twitter__logincreate', _t('Create new users for unknown Twitter logins', 'twitter'));
 
 		$ui->on_success(array($this, 'updated_config'));
 		$ui->append('submit', 'save', _t('Save', 'twitter'));
@@ -493,27 +464,31 @@ class Twitter extends Plugin
 					$users->remember();
 				}
 				else {
-					Utils::debug($users);
-					$user = User::create(array(
-						'username' => '@' . $creds->screen_name,
-						'email' => '',
-						'password' => 'twitter' . sha1(rand()),
-					));
-					$user->info->twitter__user_id = $creds->id;
-					$user->info->twitter__access_token = $token['oauth_token'];
-					$user->info->twitter__access_token_secret = $token['oauth_token_secret'];
-					$user->info->twitter__name = $creds->name;
-					$user->info->displayname = $creds->name;
-					$user->info->twitter__url = $creds->url;
-					$user->info->url = $creds->url;
-					$user->info->twitter__screen_name = $creds->screen_name;
-					$user->info->twitter__profile_image_url = $creds->profile_image_url;
-					$user->info->imageurl = $creds->profile_image_url;
-					$user->info->commit();
-					$user->remember();
+					if(Options::get('twitter__logincreate')) {
+						$user = User::create(array(
+							'username' => '@' . $creds->screen_name,
+							'email' => '',
+							'password' => 'twitter' . sha1(rand()),
+						));
+						$user->info->twitter__user_id = $creds->id;
+						$user->info->twitter__access_token = $token['oauth_token'];
+						$user->info->twitter__access_token_secret = $token['oauth_token_secret'];
+						$user->info->twitter__name = $creds->name;
+						$user->info->displayname = $creds->name;
+						$user->info->twitter__url = $creds->url;
+						$user->info->url = $creds->url;
+						$user->info->twitter__screen_name = $creds->screen_name;
+						$user->info->twitter__profile_image_url = $creds->profile_image_url;
+						$user->info->imageurl = $creds->profile_image_url;
+						$user->info->commit();
+						$user->remember();
+						Session::notice(_t('Successfully authenticated via Twitter.', 'twitter'));
+					}
+					else {
+						Session::error(_t('You have successfully authenticated via Twitter, but this site is not accepting new registrations.', 'twitter'));
+					}
 				}
 
-				Session::notice(_t('Successfully authenticated via Twitter.', 'twitter'));
 			}
 			else {
 				// TODO: We need to fudge something to report the error in the event something fails.  Sadly, the Twitter OAuth class we use doesn't seem to cater for errors very well and returns the Twitter XML response as an array key.
