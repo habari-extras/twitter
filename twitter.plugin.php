@@ -165,6 +165,7 @@ class Twitter extends Plugin
 		$post_fieldset = $ui->append('fieldset', 'post_settings', _t('Autopost Updates from Habari', 'twitter'));
 
 		$twitter_post = $post_fieldset->append('checkbox', 'post_status', 'twitter__post_status', _t('Autopost to Twitter:', 'twitter'));
+		$twitter_post_nonanon = $post_fieldset->append('checkbox', 'post_nonanon', 'twitter__post_nonanon', _t("When autoposting, include posts that anonymous users can't read:", 'twitter'));
 
 		$twitter_post = $post_fieldset->append('text', 'prepend', 'twitter__prepend', _t('Prepend to Autopost:', 'twitter'));
 		$twitter_post->value = "New Blog Post:";
@@ -211,11 +212,19 @@ class Twitter extends Plugin
 		if (is_null($oldvalue)) return;
 		if ($newvalue == Post::status('published') && $post->content_type == Post::type('entry') && $newvalue != $oldvalue) {
 			if (Options::get('twitter__post_status') == '1') {
-				require_once dirname(__FILE__) . '/lib/twitteroauth/twitteroauth.php';
-				$user = User::get_by_id($post->user_id);
-				$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $user->info->twitter__access_token, $user->info->twitter__access_token_secret);
-				$oauth->post('statuses/update', array('status' => Options::get('twitter__prepend') . $post->title . ' ' . $post->permalink));
-				Session::notice('Post Tweeted');
+
+				$anon = User::anonymous();
+				if(Options::get('twitter__post_nonanon') == '1' || $post->get_access($anon)->read) {
+
+					require_once dirname(__FILE__) . '/lib/twitteroauth/twitteroauth.php';
+					$user = User::get_by_id($post->user_id);
+					$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $user->info->twitter__access_token, $user->info->twitter__access_token_secret);
+					$oauth->post('statuses/update', array('status' => Options::get('twitter__prepend') . $post->title . ' ' . $post->permalink));
+					Session::notice(_t('Post Tweeted', 'twitter'));
+				}
+				else {
+					Session::notice(_t('Post not tweeted due to access restrictions', 'twitter'));
+				}
 			}
 		}
 	}
