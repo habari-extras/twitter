@@ -37,6 +37,9 @@ class Twitter extends Plugin
 			if (!Options::get('twitter__limit')) {
 				Options::set('twitter__limit', 1);
 			}
+			if (!Options::get('twitter__prepend')) {
+				Options::set('twitter__prepend', 'New Blog Post:');
+			}
 		}
 	}
 
@@ -168,7 +171,6 @@ class Twitter extends Plugin
 		$twitter_post_nonanon = $post_fieldset->append('checkbox', 'post_nonanon', 'twitter__post_nonanon', _t("When autoposting, include posts that anonymous users can't read:", 'twitter'));
 
 		$twitter_post = $post_fieldset->append('text', 'prepend', 'twitter__prepend', _t('Prepend to Autopost:', 'twitter'));
-		$twitter_post->value = "New Blog Post:";
 
 		$tweet_fieldset = $ui->append('fieldset', 'tweet_settings', _t('Displaying Status Updates', 'twitter'));
 
