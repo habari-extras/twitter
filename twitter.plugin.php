@@ -24,22 +24,20 @@ class Twitter extends Plugin
 
 	public function action_plugin_activation($file)
 	{
-		if (Plugins::id_from_file($file) == Plugins::id_from_file(__FILE__)) {
-			if (Options::get('twitter__hide_replies') == null) {
-				Options::set('twitter__hide_replies', 0);
-			}
-			if ((Options::get('twitter__linkify_urls') == null) or (Options::get('twitter__linkify_urls') > 1)) {
-				Options::set('twitter__linkify_urls', 0);
-			}
-			if (Options::get('twitter__hashtags_query') == null) {
-				Options::set('twitter__hashtags_query', 'http://hashtags.org/search?query=');
-			}
-			if (!Options::get('twitter__limit')) {
-				Options::set('twitter__limit', 1);
-			}
-			if (!Options::get('twitter__prepend')) {
-				Options::set('twitter__prepend', 'New Blog Post:');
-			}
+		if (Options::get('twitter__hide_replies') == null) {
+			Options::set('twitter__hide_replies', 0);
+		}
+		if ((Options::get('twitter__linkify_urls') == null) or (Options::get('twitter__linkify_urls') > 1)) {
+			Options::set('twitter__linkify_urls', 0);
+		}
+		if (Options::get('twitter__hashtags_query') == null) {
+			Options::set('twitter__hashtags_query', 'http://hashtags.org/search?query=');
+		}
+		if (!Options::get('twitter__limit')) {
+			Options::set('twitter__limit', 1);
+		}
+		if (!Options::get('twitter__prepend')) {
+			Options::set('twitter__prepend', 'New Blog Post:');
 		}
 	}
 
