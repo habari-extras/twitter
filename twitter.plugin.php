@@ -14,8 +14,13 @@
 class Twitter extends Plugin
 {
 	const DEFAULT_CACHE_EXPIRE = 60; // seconds
-	const CONSUMER_KEY = 'vk8lo1Zqut4g0q1VA1r0BQ';
-	const CONSUMER_SECRET = 'kI6xMYFvV2OUIBqA8F7m1OIhzOfZkPZLjkCmBJy5IE';
+	const CONSUMER_KEY_WRITE = 'vk8lo1Zqut4g0q1VA1r0BQ';
+	const CONSUMER_SECRET_WRITE = 'kI6xMYFvV2OUIBqA8F7m1OIhzOfZkPZLjkCmBJy5IE';
+	const CONSUMER_KEY_READ = 'sIblALymWmfQm75szSyBtw';
+	const CONSUMER_SECRET_READ = '4fBO8Ay9bss76Cn8ENSDsFLSfc2GdDT675TvYkMPYg';
+
+
+	private $tweet_about = array();
 
 	/**
 	 * Sets the new 'hide_replies' option to '0' to mimic current, non-reply-hiding
@@ -77,7 +82,7 @@ class Twitter extends Plugin
 		require_once dirname(__FILE__) . '/lib/twitteroauth/twitteroauth.php';
 		unset($_SESSION['TwitterReqToken']); // Just being safe.
 
-		$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET);
+		$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY_WRITE, Twitter::CONSUMER_SECRET_WRITE);
 		$oauth_token = $oauth->getRequestToken(URL::get('admin', array('page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'confirm')));
 		$request_link = $oauth->getAuthorizeURL($oauth_token);
 		$reqToken = array("request_link" => $request_link, "request_token" => $oauth_token['oauth_token'], "request_token_secret" => $oauth_token['oauth_token_secret']);
@@ -111,7 +116,7 @@ class Twitter extends Plugin
 		}
 		else {
 			$reqToken = unserialize($_SESSION['TwitterReqToken']);
-			$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $reqToken['request_token'], $reqToken['request_token_secret']);
+			$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY_WRITE, Twitter::CONSUMER_SECRET_WRITE, $reqToken['request_token'], $reqToken['request_token_secret']);
 			$token = $oauth->getAccessToken($_GET['oauth_verifier']);
 			$config_url = URL::get('admin', array('page' => 'plugins', 'configure' => $this->plugin_id(), 'configaction' => 'Configure'));
 
@@ -187,6 +192,13 @@ class Twitter extends Plugin
 		$twitterlogin = $tweet_logins->append('checkbox', 'twitterlogin', 'twitter__login', _t('Show button to log in with Twitter', 'twitter'));
 		$twitterlogin = $tweet_logins->append('checkbox', 'twitterlogincreate', 'twitter__logincreate', _t('Create new users for unknown Twitter logins', 'twitter'));
 
+		$raw_groups = UserGroups::get_all();
+		$groups = array();
+		foreach($raw_groups as $group) {
+			$groups[$group->id] = $group->name;
+		}
+		$twittergroup = $tweet_logins->append('select', 'twitterlogingroup', 'twitter__logingroup', _t('When a new user is created for a Twitter account, add it to this group:', 'twitter'), $groups);
+
 		$ui->on_success(array($this, 'updated_config'));
 		$ui->append('submit', 'save', _t('Save', 'twitter'));
 		$ui->out();
@@ -212,13 +224,32 @@ class Twitter extends Plugin
 		if (is_null($oldvalue)) return;
 		if ($newvalue == Post::status('published') && $post->content_type == Post::type('entry') && $newvalue != $oldvalue) {
 			if (Options::get('twitter__post_status') == '1') {
+				$this->tweet_about[$post->id] = $post->id;
+			}
+		}
+	}
 
+	public function action_post_insert_after($post)
+	{
+		return $this->action_post_update_status($post, -1, $post->status);
+	}
+
+	public function action_post_update_after($post)
+	{
+		$this->tweet_about_posts[$post->id] = $post->id;
+	}
+
+	public function tweet_about_posts()
+	{
+		while(count($this->tweet_about) > 0) {
+			$post_id = array_pop($this->tweet_about);
+			if(Options::get('twitter__post_status') == '1' && $post = Post::get($post_id)) {
 				$anon = User::anonymous();
 				if(Options::get('twitter__post_nonanon') == '1' || $post->get_access($anon)->read) {
 
 					require_once dirname(__FILE__) . '/lib/twitteroauth/twitteroauth.php';
 					$user = User::get_by_id($post->user_id);
-					$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $user->info->twitter__access_token, $user->info->twitter__access_token_secret);
+					$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY_WRITE, Twitter::CONSUMER_SECRET_WRITE, $user->info->twitter__access_token, $user->info->twitter__access_token_secret);
 					$oauth->post('statuses/update', array('status' => Options::get('twitter__prepend') . $post->title . ' ' . $post->permalink));
 					Session::notice(_t('Post Tweeted', 'twitter'));
 				}
@@ -227,11 +258,6 @@ class Twitter extends Plugin
 				}
 			}
 		}
-	}
-
-	public function action_post_insert_after($post)
-	{
-		return $this->action_post_update_status($post, -1, $post->status);
 	}
 
 
@@ -431,7 +457,7 @@ class Twitter extends Plugin
 		require_once dirname(__FILE__) . '/lib/twitteroauth/twitteroauth.php';
 		unset($_SESSION['TwitterReqToken']); // Just being safe.
 
-		$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET);
+		$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY_READ, Twitter::CONSUMER_SECRET_READ);
 		$oauth_token = $oauth->getRequestToken(URL::get('auth_twitter_verify'));
 		$request_link = $oauth->getAuthorizeURL($oauth_token);
 		$reqToken = array("request_link" => $request_link, "request_token" => $oauth_token['oauth_token'], "request_token_secret" => $oauth_token['oauth_token_secret']);
@@ -453,7 +479,7 @@ class Twitter extends Plugin
 		}
 		else {
 			$reqToken = unserialize($_SESSION['TwitterReqToken']);
-			$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY, Twitter::CONSUMER_SECRET, $reqToken['request_token'], $reqToken['request_token_secret']);
+			$oauth = new TwitterOAuth(Twitter::CONSUMER_KEY_READ, Twitter::CONSUMER_SECRET_READ, $reqToken['request_token'], $reqToken['request_token_secret']);
 			$token = $oauth->getAccessToken($_GET['oauth_verifier']);
 			$return_url = isset($_SESSION['TwitterLastPage']) ? $_SESSION['TwitterLastPage'] : Site::get_url('habari');
 
@@ -491,6 +517,7 @@ class Twitter extends Plugin
 						$user->info->imageurl = $creds->profile_image_url;
 						$user->info->commit();
 						$user->remember();
+						$user->add_to_group(Options::get('twitter__logingroup'));
 						Session::notice(_t('Successfully authenticated via Twitter.', 'twitter'));
 					}
 					else {
@@ -508,6 +535,22 @@ class Twitter extends Plugin
 		}
 		Utils::redirect($return_url);
 
+	}
+
+	public function action_form_user($form, $edit_user)
+	{
+		$userid = $form->user_info->append( 'text', 'twitteruserid', 'null:null', _t( 'Twitter Login User ID'), 'optionscontrol_text' );
+		$userid->class[] = 'item clear';
+		$userid->value = $edit_user->info->twitter__user_id;
+	}
+
+	public function filter_form_user_update($update, $form, $edit_user)
+	{
+		if($form->twitteruserid->value != $edit_user->info->twitter__user_id) {
+			$edit_user->info->twitter__user_id = $form->twitteruserid->value;
+			return true;
+		}
+		return false;
 	}
 
 }
