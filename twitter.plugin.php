@@ -550,7 +550,7 @@ class Twitter extends Plugin
 			$edit_user->info->twitter__user_id = $form->twitteruserid->value;
 			return true;
 		}
-		return false;
+		return $update;
 	}
 
 }
