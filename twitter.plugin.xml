@@ -13,5 +13,10 @@
 			<p>This plugin does two things: Post a notification to your twitter stream linking to a newly published post, and retrieving and displaying your recent status update(s) on your blog. Either or both can be enabled.</p><p>A 'tweets' template file for themes is provided.</p>
 		]]></value>
 	</help>
+	
+	<provides>
+		<feature url="http://wiki.habariproject.org/en/feature/twitter">twitter</feature>
+	</provides>
+	
 </pluggable>
  
