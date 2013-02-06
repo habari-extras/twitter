@@ -322,11 +322,11 @@ class Twitter extends Plugin
 	{
 		$notices = array();
 		if ($username != '') {
-			$twitter_url = 'http://twitter.com/statuses/user_timeline/' . urlencode($username) . '.xml';
+			$twitter_url = 'http://api.twitter.com/1/statuses/user_timeline.xml?include_entities=true&include_rts=true&screen_name='. urlencode($username) . '&';
 
 			// We only need to get a single tweet if we're hiding replies (otherwise we can rely on the maximum returned and hope there's a non-reply)
 			if (!$hide_replies && $limit) {
-				$twitter_url .= '?count=' . $limit;
+				$twitter_url .= 'count=' . $limit . '&';
 			}
 
 			if (Cache::has('twitter_notices')) {
