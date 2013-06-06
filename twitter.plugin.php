@@ -42,7 +42,7 @@ class Twitter extends Plugin
 			Options::set('twitter__limit', 1);
 		}
 		if (!Options::get('twitter__prepend')) {
-			Options::set('twitter__prepend', 'New Blog Post:');
+			Options::set('twitter__prepend', 'New Blog Post: ');
 		}
 	}
 
